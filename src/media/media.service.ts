@@ -44,7 +44,7 @@ export class MediaService {
             this.logger.error('Cloudinary upload failed', error);
             return reject(error);
           }
-          resolve(result?.secure_url);
+          resolve(result?.secure_url || '');
         },
       );
       uploadStream.end(file.buffer);
