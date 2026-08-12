@@ -4,6 +4,8 @@ import * as schema from './schema';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
+import * as bcrypt from 'bcrypt';
+
 async function main() {
   console.log('Starting seed...');
 
@@ -13,10 +15,26 @@ async function main() {
   const db = drizzle(pool, { schema });
 
   try {
+    // Clear existing data (cascade order)
+    await db.delete(schema.commentLikes);
+    await db.delete(schema.videoLikes);
+    await db.delete(schema.comments);
+    await db.delete(schema.videos);
+    await db.delete(schema.messages);
+    await db.delete(schema.chatParticipants);
+    await db.delete(schema.chats);
+    await db.delete(schema.notifications);
+    await db.delete(schema.applications);
+    await db.delete(schema.auditions);
+    await db.delete(schema.follows);
+    await db.delete(schema.users);
+    console.log('Cleared existing database tables.');
+
+    const hashedPassword = await bcrypt.hash('password123', 10);
     // 1. User
     const [user] = await db.insert(schema.users).values({
       email: 'seeduser@example.com',
-      password: 'hashedpassword123',
+      password: hashedPassword,
       fullName: 'Seed Actor',
       role: 'artist',
       stageName: 'SeedStar',
