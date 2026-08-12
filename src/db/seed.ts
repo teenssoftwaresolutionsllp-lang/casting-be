@@ -22,7 +22,7 @@ async function main() {
       stageName: 'SeedStar',
     }).returning();
     console.log('Seeded 1 User');
-
+    
     // 2. Follows
     await db.insert(schema.follows).values({
       followerId: user.id,
