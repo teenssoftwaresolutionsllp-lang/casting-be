@@ -19,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { VideoService } from '../videos/video.service';
+import type { Express } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
@@ -103,8 +104,9 @@ export class PhotosController {
 
   @Get()
   @ApiOperation({ summary: 'Get all photos' })
-  async getPhotos() {
-    return [];
+  async getPhotos(@CurrentUser() user: any) {
+    // Photos are stored in the videos table with category = 'Photos'
+    return this.videoService.findAll(user.sub, 'Photos');
   }
 }
 

@@ -38,6 +38,7 @@ async function main() {
       fullName: 'Seed Actor',
       role: 'artist',
       stageName: 'SeedStar',
+      profilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
     }).returning();
     console.log('Seeded 1 User');
     
