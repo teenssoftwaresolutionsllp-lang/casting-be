@@ -1,6 +1,6 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, desc, or } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 
@@ -93,7 +93,28 @@ export class ChatRepository {
     });
   }
 
-  async getMessages(chatId: string) {
+  async getMessages(chatId: string, userId: string) {
+    const [participant] = await this.db
+      .select({ chatId: schema.chatParticipants.chatId })
+      .from(schema.chatParticipants)
+      .where(and(
+        eq(schema.chatParticipants.chatId, chatId),
+        eq(schema.chatParticipants.userId, userId),
+      ));
+
+    if (!participant) {
+      const [chat] = await this.db
+        .select({ id: schema.chats.id })
+        .from(schema.chats)
+        .where(eq(schema.chats.id, chatId));
+
+      if (!chat) {
+        throw new NotFoundException('Chat not found.');
+      }
+
+      throw new ForbiddenException('You are not a participant in this chat.');
+    }
+
     return this.db
       .select({
         id: schema.messages.id,
@@ -108,6 +129,27 @@ export class ChatRepository {
   }
 
   async sendMessage(chatId: string, senderId: string, text: string) {
+    const [participant] = await this.db
+      .select({ chatId: schema.chatParticipants.chatId })
+      .from(schema.chatParticipants)
+      .where(and(
+        eq(schema.chatParticipants.chatId, chatId),
+        eq(schema.chatParticipants.userId, senderId),
+      ));
+
+    if (!participant) {
+      const [chat] = await this.db
+        .select({ id: schema.chats.id })
+        .from(schema.chats)
+        .where(eq(schema.chats.id, chatId));
+
+      if (!chat) {
+        throw new NotFoundException('Chat not found. Start a chat before sending messages.');
+      }
+
+      throw new ForbiddenException('You are not a participant in this chat.');
+    }
+
     const [msg] = await this.db.insert(schema.messages).values({
       chatId,
       senderId,

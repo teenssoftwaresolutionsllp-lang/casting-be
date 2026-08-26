@@ -18,7 +18,7 @@ export class ChatService {
   }
 
   async getMessages(chatId: string, currentUserId: string) {
-    const messages = await this.chatRepository.getMessages(chatId);
+    const messages = await this.chatRepository.getMessages(chatId, currentUserId);
     return messages.map(m => ({
       ...m,
       sender: m.senderId === currentUserId ? 'me' : 'other',

@@ -7,6 +7,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
@@ -24,7 +25,10 @@ export class ChatController {
   @Post('start/:userId')
   @ApiOperation({ summary: 'Find or create a chat room with a specific user' })
   @ApiResponse({ status: 201, description: 'Returns the chatId.' })
-  async startChat(@CurrentUser() user: any, @Param('userId') targetUserId: string) {
+  async startChat(
+    @CurrentUser() user: any,
+    @Param('userId', new ParseUUIDPipe()) targetUserId: string,
+  ) {
     return this.chatService.findOrCreateChat(user.sub, targetUserId);
   }
 
@@ -38,7 +42,10 @@ export class ChatController {
   @Get(':id/messages')
   @ApiOperation({ summary: 'Retrieve the message history for a specific chat' })
   @ApiResponse({ status: 200, description: 'Returns list of messages.' })
-  async getMessages(@CurrentUser() user: any, @Param('id') chatId: string) {
+  async getMessages(
+    @CurrentUser() user: any,
+    @Param('id', new ParseUUIDPipe()) chatId: string,
+  ) {
     return this.chatService.getMessages(chatId, user.sub);
   }
 
@@ -47,7 +54,7 @@ export class ChatController {
   @ApiResponse({ status: 201, description: 'Message sent successfully.' })
   async sendMessage(
     @CurrentUser() user: any,
-    @Param('id') chatId: string,
+    @Param('id', new ParseUUIDPipe()) chatId: string,
     @Body() dto: SendMessageDto,
   ) {
     return this.chatService.sendMessage(chatId, user.sub, dto.text);
