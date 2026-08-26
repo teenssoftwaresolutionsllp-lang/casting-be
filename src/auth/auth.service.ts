@@ -18,6 +18,13 @@ export class AuthService {
       throw new BadRequestException('A user with this email address already exists.');
     }
 
+    if (dto.mobile) {
+      const existingMobile = await this.userRepository.findByMobile(dto.mobile);
+      if (existingMobile) {
+        throw new BadRequestException('A user with this mobile number already exists.');
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     
     // Construct user DB record

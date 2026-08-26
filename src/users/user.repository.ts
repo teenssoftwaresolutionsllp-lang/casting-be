@@ -34,6 +34,15 @@ export class UserRepository {
     return results[0] || null;
   }
 
+  async findByMobile(mobile: string) {
+    const results = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.mobile, mobile))
+      .limit(1);
+    return results[0] || null;
+  }
+
   async update(id: string, updateData: Partial<typeof schema.users.$inferInsert>) {
     const [updated] = await this.db
       .update(schema.users)
