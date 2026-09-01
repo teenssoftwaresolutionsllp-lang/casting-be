@@ -80,3 +80,8 @@ From the Swagger UI, you can:
 - **Chat**: 1:1 real-time messaging structures.
 - **Notifications**: Internal alert tracking.
 - **Media**: Cloudinary integration for scalable assets.
+
+
+
+Neon - url : postgresql://neondb_owner:npg_0xDaP1AoKMCS@ep-square-lake-a51ed5rm-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+
