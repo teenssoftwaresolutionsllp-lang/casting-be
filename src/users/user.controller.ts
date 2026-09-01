@@ -35,7 +35,11 @@ export class UserController {
   }
 
   @Get('users/explore')
-  @ApiOperation({ summary: 'Search and browse casting artists and talent' })
+  @ApiOperation({
+    summary: 'Search and browse casting artists and talent',
+    description:
+      'Returns { profiles, paywall, remaining, hasMore }. After the daily scroll cap the list is empty and paywall=true. The app must stop requesting more pages.',
+  })
   @ApiQuery({ name: 'query', required: false, description: 'Filter creators by name' })
   @ApiQuery({ name: 'category', required: false, description: 'Filter creators by category (e.g., Actor, Model, Dancer)' })
   @ApiResponse({ status: 200, description: 'Returns matching talent lists.' })

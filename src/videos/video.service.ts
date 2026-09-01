@@ -1,11 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { VideoRepository } from './video.repository';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
+import { QuotaService } from '../users/quota.service';
 
 @Injectable()
 export class VideoService {
-  constructor(private readonly videoRepository: VideoRepository) {}
+  constructor(
+    private readonly videoRepository: VideoRepository,
+    private readonly quotaService: QuotaService,
+  ) {}
 
   async createVideo(creatorId: string, dto: CreateVideoDto) {
     return this.videoRepository.create({
@@ -80,10 +84,16 @@ export class VideoService {
     if (liked) {
       await this.videoRepository.removeLike(videoId, userId);
       return { liked: false, likesCount: Math.max(0, video.likesCount - 1) };
-    } else {
-      await this.videoRepository.addLike(videoId, userId);
-      return { liked: true, likesCount: video.likesCount + 1 };
     }
+
+    const snapshot = await this.quotaService.loadFreshQuota(userId);
+    const likedOk = await this.quotaService.tryConsumeLike(userId, snapshot.limits.likesPerDay);
+    if (!likedOk) {
+      this.quotaService.throwPaywall('Daily like limit reached. Upgrade to continue.');
+    }
+
+    await this.videoRepository.addLike(videoId, userId);
+    return { liked: true, likesCount: video.likesCount + 1 };
   }
 
   async incrementViews(videoId: string) {
@@ -122,6 +132,21 @@ export class VideoService {
     const video = await this.videoRepository.findById(videoId);
     if (!video) {
       throw new NotFoundException(`Video with ID ${videoId} not found.`);
+    }
+
+    const snapshot = await this.quotaService.loadFreshQuota(userId);
+    const maxComments = this.quotaService.commentLimitFor(snapshot);
+    if (maxComments <= 0) {
+      this.quotaService.throwPaywall(
+        snapshot.plan === 'free'
+          ? 'Like 20 videos today to unlock 2 comments, or upgrade your plan.'
+          : 'Daily comment limit reached. Upgrade to continue.',
+      );
+    }
+
+    const commentOk = await this.quotaService.tryConsumeComment(userId, maxComments);
+    if (!commentOk) {
+      this.quotaService.throwPaywall('Daily comment limit reached. Upgrade to continue.');
     }
 
     const created = await this.videoRepository.createComment({

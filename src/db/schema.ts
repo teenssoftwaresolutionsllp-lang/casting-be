@@ -55,6 +55,34 @@ export const users = pgTable('users', {
   resume: text('resume'),
   awards: text('awards'),
   bio: text('bio'),
+
+  // -------------------------------------------------
+  // SUBSCRIPTION (who is paying, and which plan)
+  // -------------------------------------------------
+  // isPaid: true only after the SERVER checks a real payment. Never trust the phone/app.
+  isPaid: boolean('is_paid').default(false).notNull(),
+  // subscriptionPlan: 'free' | 'pro' | 'pro_max'  <-- this is the ACTIVE plan today
+  subscriptionPlan: text('subscription_plan').default('free').notNull(),
+  // subscriptionStatus: 'inactive' | 'active' | 'expired' | 'cancelled'
+  subscriptionStatus: text('subscription_status').default('inactive').notNull(),
+  // When this paid period ends. After this date, treat the user as free.
+  currentPeriodEnd: timestamp('current_period_end'),
+  // The plan they had BEFORE the last change (so Pro is not "lost" on upgrade).
+  previousPlan: text('previous_plan'),
+  planChangedAt: timestamp('plan_changed_at'),
+
+  // -------------------------------------------------
+  // DAILY QUOTA COUNTERS (how much they used today)
+  // These numbers go back to 0 after 24 hours. See QuotaService.
+  // -------------------------------------------------
+  likesUsedToday: integer('likes_used_today').default(0).notNull(),
+  commentsUsedToday: integer('comments_used_today').default(0).notNull(),
+  // Opening a full profile page (GET /users/:id) — free = 5 per day
+  profileViewsUsedToday: integer('profile_views_used_today').default(0).notNull(),
+  // Profiles shown in the explore/scroll feed — free = 20 per day
+  scrollProfilesUsedToday: integer('scroll_profiles_used_today').default(0).notNull(),
+  lastQuotaResetAt: timestamp('last_quota_reset_at').defaultNow().notNull(),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -89,6 +117,22 @@ export const videos = pgTable('videos', {
 });
 
 // ==========================================
+// PHOTOS TABLE
+// ==========================================
+export const photos = pgTable('photos', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  category: text('category').notNull(), // 'Portrait' | 'Fashion' | 'Commercial' | 'Editorial'
+  title: text('title').notNull(),
+  desc: text('desc').notNull(),
+  url: text('url').notNull(), // Cloudinary image URL
+  thumb: text('thumb').notNull(), // Thumbnail URL
+  viewsCount: integer('views_count').default(0).notNull(),
+  likesCount: integer('likes_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ==========================================
 // VIDEO LIKES TABLE
 // ==========================================
 export const videoLikes = pgTable('video_likes', {
@@ -98,6 +142,20 @@ export const videoLikes = pgTable('video_likes', {
   return [
     {
       pk: primaryKey({ columns: [table.videoId, table.userId] }),
+    }
+  ];
+});
+
+// ==========================================
+// PHOTO LIKES TABLE
+// ==========================================
+export const photoLikes = pgTable('photo_likes', {
+  photoId: uuid('photo_id').references(() => photos.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+}, (table) => {
+  return [
+    {
+      pk: primaryKey({ columns: [table.photoId, table.userId] }),
     }
   ];
 });
@@ -115,10 +173,36 @@ export const comments = pgTable('comments', {
 });
 
 // ==========================================
+// PHOTO COMMENTS TABLE
+// ==========================================
+export const photoComments = pgTable('photo_comments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  photoId: uuid('photo_id').references(() => photos.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  text: text('text').notNull(),
+  likesCount: integer('likes_count').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ==========================================
 // COMMENT LIKES TABLE
 // ==========================================
 export const commentLikes = pgTable('comment_likes', {
   commentId: uuid('comment_id').references(() => comments.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+}, (table) => {
+  return [
+    {
+      pk: primaryKey({ columns: [table.commentId, table.userId] }),
+    }
+  ];
+});
+
+// ==========================================
+// PHOTO COMMENT LIKES TABLE
+// ==========================================
+export const photoCommentLikes = pgTable('photo_comment_likes', {
+  commentId: uuid('comment_id').references(() => photoComments.id, { onDelete: 'cascade' }).notNull(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
 }, (table) => {
   return [
@@ -192,6 +276,45 @@ export const messages = pgTable('messages', {
 });
 
 // ==========================================
+// SUBSCRIPTIONS TABLE
+// One row per checkout / paid period.
+// This is the money record. The users table only stores the CURRENT plan.
+// ==========================================
+export const subscriptions = pgTable('subscriptions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  plan: text('plan').notNull(), // 'pro' | 'pro_max'
+  status: text('status').notNull(), // 'created' | 'active' | 'expired' | 'cancelled'
+  // Amount in the smallest money unit (for INR this is paise: 49900 = ₹499)
+  amount: integer('amount').notNull(),
+  currency: text('currency').default('INR').notNull(),
+  provider: text('provider').notNull(), // 'razorpay'
+  // Razorpay order id (we create this BEFORE the user pays)
+  providerSubscriptionId: text('provider_subscription_id'),
+  // Razorpay payment id (we save this AFTER the server verifies the payment)
+  providerPaymentId: text('provider_payment_id'),
+  startedAt: timestamp('started_at'),
+  endsAt: timestamp('ends_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ==========================================
+// SUBSCRIPTION HISTORY TABLE
+// Every plan change is a new row. We never delete old plans from here.
+// Example: Pro -> Pro Max still keeps a "you were on Pro" row.
+// ==========================================
+export const subscriptionHistory = pgTable('subscription_history', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  fromPlan: text('from_plan').notNull(),
+  toPlan: text('to_plan').notNull(),
+  changedAt: timestamp('changed_at').defaultNow().notNull(),
+  // Why it changed: 'payment_verified' | 'upgrade' | 'expired'
+  reason: text('reason'),
+});
+
+// ==========================================
 // NOTIFICATIONS TABLE
 // ==========================================
 export const notifications = pgTable('notifications', {
@@ -208,14 +331,20 @@ export const notifications = pgTable('notifications', {
 // ==========================================
 export const usersRelations = relations(users, ({ many }) => ({
   videos: many(videos),
+  photos: many(photos),
   videoLikes: many(videoLikes),
+  photoLikes: many(photoLikes),
   comments: many(comments),
+  photoComments: many(photoComments),
   commentLikes: many(commentLikes),
+  photoCommentLikes: many(photoCommentLikes),
   auditions: many(auditions),
   applications: many(applications),
   notifications: many(notifications),
   chatParticipants: many(chatParticipants),
   messages: many(messages),
+  subscriptions: many(subscriptions),
+  subscriptionHistory: many(subscriptionHistory),
 }));
 
 export const videosRelations = relations(videos, ({ one, many }) => ({
@@ -224,9 +353,20 @@ export const videosRelations = relations(videos, ({ one, many }) => ({
   comments: many(comments),
 }));
 
+export const photosRelations = relations(photos, ({ one, many }) => ({
+  creator: one(users, { fields: [photos.creatorId], references: [users.id] }),
+  likes: many(photoLikes),
+  comments: many(photoComments),
+}));
+
 export const videoLikesRelations = relations(videoLikes, ({ one }) => ({
   video: one(videos, { fields: [videoLikes.videoId], references: [videos.id] }),
   user: one(users, { fields: [videoLikes.userId], references: [users.id] }),
+}));
+
+export const photoLikesRelations = relations(photoLikes, ({ one }) => ({
+  photo: one(photos, { fields: [photoLikes.photoId], references: [photos.id] }),
+  user: one(users, { fields: [photoLikes.userId], references: [users.id] }),
 }));
 
 export const commentsRelations = relations(comments, ({ one, many }) => ({
@@ -235,9 +375,20 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
   likes: many(commentLikes),
 }));
 
+export const photoCommentsRelations = relations(photoComments, ({ one, many }) => ({
+  photo: one(photos, { fields: [photoComments.photoId], references: [photos.id] }),
+  user: one(users, { fields: [photoComments.userId], references: [users.id] }),
+  likes: many(photoCommentLikes),
+}));
+
 export const commentLikesRelations = relations(commentLikes, ({ one }) => ({
   comment: one(comments, { fields: [commentLikes.commentId], references: [comments.id] }),
   user: one(users, { fields: [commentLikes.userId], references: [users.id] }),
+}));
+
+export const photoCommentLikesRelations = relations(photoCommentLikes, ({ one }) => ({
+  comment: one(photoComments, { fields: [photoCommentLikes.commentId], references: [photoComments.id] }),
+  user: one(users, { fields: [photoCommentLikes.userId], references: [users.id] }),
 }));
 
 export const auditionsRelations = relations(auditions, ({ one, many }) => ({
@@ -267,4 +418,12 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  user: one(users, { fields: [subscriptions.userId], references: [users.id] }),
+}));
+
+export const subscriptionHistoryRelations = relations(subscriptionHistory, ({ one }) => ({
+  user: one(users, { fields: [subscriptionHistory.userId], references: [users.id] }),
 }));
