@@ -34,16 +34,16 @@ import { BillingModule } from './billing/billing.module';
     
     // Application feature modules
     DbModule,
-    MediaModule,
-    UserModule,
     AuthModule,
+    UserModule,
+    BillingModule,
+    MediaModule,
     VideoModule,
     PhotoModule,
     AuditionModule,
     ApplicationModule,
     ChatModule,
     NotificationModule,
-    BillingModule,
   ],
 })
 export class AppModule {}

@@ -13,7 +13,7 @@ import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
-@ApiTags('Users & Profile')
+@ApiTags('02 Users & Profile')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller()

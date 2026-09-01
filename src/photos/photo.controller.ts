@@ -16,7 +16,7 @@ import { CreatePhotoCommentDto } from './dto/create-photo-comment.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
-@ApiTags('Photos')
+@ApiTags('06 Photos')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('photos')

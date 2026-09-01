@@ -23,7 +23,7 @@ import type { Express } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
-@ApiTags('Media')
+@ApiTags('04 Media Upload')
 @Controller('media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
@@ -57,7 +57,7 @@ export class MediaController {
 }
 
 // ─── /photos controller ──────────────────────────────────────────────────────
-@ApiTags('Photos')
+@ApiTags('06 Photos')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('photos')
@@ -111,7 +111,7 @@ export class PhotosController {
 }
 
 // ─── /videos/upload controller ───────────────────────────────────────────────
-@ApiTags('Videos')
+@ApiTags('05 Videos')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('videos')

@@ -9,7 +9,7 @@ import { SubscriptionService } from './subscription.service';
 import { QuotaService } from '../users/quota.service';
 import { getFreeCommentLimit } from '../common/plan-policy';
 
-@ApiTags('Billing & Payments')
+@ApiTags('03 Billing & Payments')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller()

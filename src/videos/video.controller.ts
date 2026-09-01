@@ -16,7 +16,7 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
-@ApiTags('Videos')
+@ApiTags('05 Videos')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('videos')
