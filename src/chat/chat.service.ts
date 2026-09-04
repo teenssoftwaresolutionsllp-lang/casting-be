@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ChatRepository } from './chat.repository';
+import { QuotaService } from '../users/quota.service';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly chatRepository: ChatRepository) {}
+  constructor(
+    private readonly chatRepository: ChatRepository,
+    private readonly quotaService: QuotaService,
+  ) {}
 
   async findOrCreateChat(currentUserId: string, targetUserId: string) {
     let chatId = await this.chatRepository.findChatBetweenUsers(currentUserId, targetUserId);
@@ -26,6 +30,18 @@ export class ChatService {
   }
 
   async sendMessage(chatId: string, senderId: string, text: string) {
+    const snapshot = await this.quotaService.loadFreshQuota(senderId);
+    const ok = await this.quotaService.tryConsumeMessage(
+      senderId,
+      snapshot.limits.messagesPerDay,
+    );
+    if (!ok) {
+      this.quotaService.throwPaywall(
+        'Daily message limit reached. Upgrade to continue.',
+        snapshot.plan,
+      );
+    }
+
     return this.chatRepository.sendMessage(chatId, senderId, text);
   }
 }

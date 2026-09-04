@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@
 import { Reflector } from '@nestjs/core';
 import { UserRepository } from '../users/user.repository';
 import { QuotaService } from '../users/quota.service';
-import { PlanName } from '../common/plan-policy';
+import { PlanName, getPaymentOptions } from '../common/plan-policy';
 import { REQUIRE_PLAN_KEY } from './require-plan.decorator';
 
 /**
@@ -47,6 +47,7 @@ export class PaidPlanGuard implements CanActivate {
         paywall: true,
         message: 'Free limit reached. Upgrade to continue.',
         remaining: 0,
+        paymentOptions: getPaymentOptions(snapshot.plan),
       });
     }
 
@@ -55,6 +56,7 @@ export class PaidPlanGuard implements CanActivate {
         paywall: true,
         message: 'This feature needs Pro Max. Upgrade to continue.',
         remaining: 0,
+        paymentOptions: getPaymentOptions(snapshot.plan),
       });
     }
 

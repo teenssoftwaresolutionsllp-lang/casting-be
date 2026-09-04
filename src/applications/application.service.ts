@@ -3,6 +3,7 @@ import { ApplicationRepository } from './application.repository';
 import { AuditionRepository } from '../auditions/audition.repository';
 import { ApplyDto } from './dto/apply.dto';
 import { UpdateApplicationStatusDto } from './dto/update-status.dto';
+import { QuotaService } from '../users/quota.service';
 
 @Injectable()
 export class ApplicationService {
@@ -10,6 +11,7 @@ export class ApplicationService {
     private readonly applicationRepository: ApplicationRepository,
     @Inject(forwardRef(() => AuditionRepository))
     private readonly auditionRepository: AuditionRepository,
+    private readonly quotaService: QuotaService,
   ) {}
 
   async apply(auditionId: string, applicantId: string, dto: ApplyDto) {
@@ -25,6 +27,18 @@ export class ApplicationService {
     const existingApp = await this.applicationRepository.findByAuditionAndApplicant(auditionId, applicantId);
     if (existingApp) {
       throw new BadRequestException('You have already applied for this audition.');
+    }
+
+    const snapshot = await this.quotaService.loadFreshQuota(applicantId);
+    const ok = await this.quotaService.tryConsumeAuditionApplication(
+      applicantId,
+      snapshot.limits.auditionApplicationsPerDay,
+    );
+    if (!ok) {
+      this.quotaService.throwPaywall(
+        'Daily audition application limit reached. Upgrade to continue.',
+        snapshot.plan,
+      );
     }
 
     return this.applicationRepository.create({

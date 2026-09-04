@@ -53,7 +53,7 @@ export class UserService {
         snapshot.limits.profileViewsPerDay,
       );
       if (!ok) {
-        this.quotaService.throwPaywall('Free limit reached. Upgrade to continue.');
+        this.quotaService.throwPaywall('Free limit reached. Upgrade to continue.', snapshot.plan);
       }
     }
 
@@ -92,7 +92,7 @@ export class UserService {
     const remaining = snapshot.limits.profileScrollsPerDay - used;
 
     if (remaining <= 0) {
-      return this.quotaService.paywall('Free limit reached. Upgrade to continue.');
+      return this.quotaService.paywall('Free limit reached. Upgrade to continue.', snapshot.plan);
     }
 
     const creators = await this.userRepository.exploreTalent(query, category, {

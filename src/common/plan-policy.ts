@@ -15,6 +15,8 @@ export type PlanLimits = {
   commentsPerDay: number;
   profileViewsPerDay: number;
   profileScrollsPerDay: number;
+  messagesPerDay: number;
+  auditionApplicationsPerDay: number;
 };
 
 export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
@@ -24,6 +26,8 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
     commentsPerDay: 2,
     profileViewsPerDay: 5,
     profileScrollsPerDay: 20,
+    messagesPerDay: 5,
+    auditionApplicationsPerDay: 1,
   },
   // YOU MUST: confirm these Pro numbers with the business team.
   pro: {
@@ -31,6 +35,8 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
     commentsPerDay: 30,
     profileViewsPerDay: 100,
     profileScrollsPerDay: 100,
+    messagesPerDay: 50,
+    auditionApplicationsPerDay: 10,
   },
   // YOU MUST: confirm these Pro Max numbers with the business team.
   pro_max: {
@@ -38,6 +44,8 @@ export const PLAN_LIMITS: Record<PlanName, PlanLimits> = {
     commentsPerDay: 100,
     profileViewsPerDay: 500,
     profileScrollsPerDay: 500,
+    messagesPerDay: 500,
+    auditionApplicationsPerDay: 50,
   },
 };
 
@@ -79,4 +87,44 @@ export function parsePlanName(value: string | null | undefined): PlanName {
 export function getFreeCommentLimit(likesUsedToday: number): number {
   const unlocked = Math.floor(likesUsedToday / 20) * 2;
   return Math.min(PLAN_LIMITS.free.commentsPerDay, unlocked);
+}
+
+export type PaymentPlanOption = {
+  plan: Exclude<PlanName, 'free'>;
+  label: string;
+  amountPaise: number;
+  amountRupees: number;
+  currency: string;
+  periodDays: number;
+  limits: PlanLimits;
+};
+
+export type PaymentOptionsResponse = {
+  checkoutEndpoint: string;
+  verifyEndpoint: string;
+  plans: PaymentPlanOption[];
+  recommendedPlan: Exclude<PlanName, 'free'>;
+};
+
+export function getPaymentOptions(currentPlan?: PlanName): PaymentOptionsResponse {
+  const paidPlans: Exclude<PlanName, 'free'>[] = ['pro', 'pro_max'];
+  const plans: PaymentPlanOption[] = paidPlans.map((plan) => ({
+    plan,
+    label: PLAN_PRICES[plan].label,
+    amountPaise: PLAN_PRICES[plan].amountPaise,
+    amountRupees: PLAN_PRICES[plan].amountPaise / 100,
+    currency: PLAN_PRICES[plan].currency,
+    periodDays: PAID_PERIOD_DAYS,
+    limits: PLAN_LIMITS[plan],
+  }));
+
+  const recommendedPlan: Exclude<PlanName, 'free'> =
+    currentPlan === 'pro' ? 'pro_max' : 'pro';
+
+  return {
+    checkoutEndpoint: '/payments/checkout',
+    verifyEndpoint: '/payments/verify',
+    plans,
+    recommendedPlan,
+  };
 }

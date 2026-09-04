@@ -5,6 +5,7 @@ import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 import {
   getFreeCommentLimit,
+  getPaymentOptions,
   parsePlanName,
   PLAN_LIMITS,
   PlanLimits,
@@ -59,6 +60,8 @@ export class QuotaService {
             commentsUsedToday: 0,
             profileViewsUsedToday: 0,
             scrollProfilesUsedToday: 0,
+            messagesUsedToday: 0,
+            auditionApplicationsUsedToday: 0,
             lastQuotaResetAt: new Date(),
           })
           .where(eq(schema.users.id, userId))
@@ -122,6 +125,24 @@ export class QuotaService {
     return Boolean(row);
   }
 
+  async tryConsumeMessage(userId: string, maxMessages: number): Promise<boolean> {
+    const [row] = await this.db
+      .update(schema.users)
+      .set({ messagesUsedToday: sql`${schema.users.messagesUsedToday} + 1` })
+      .where(and(eq(schema.users.id, userId), sql`${schema.users.messagesUsedToday} < ${maxMessages}`))
+      .returning({ messagesUsedToday: schema.users.messagesUsedToday });
+    return Boolean(row);
+  }
+
+  async tryConsumeAuditionApplication(userId: string, maxApplications: number): Promise<boolean> {
+    const [row] = await this.db
+      .update(schema.users)
+      .set({ auditionApplicationsUsedToday: sql`${schema.users.auditionApplicationsUsedToday} + 1` })
+      .where(and(eq(schema.users.id, userId), sql`${schema.users.auditionApplicationsUsedToday} < ${maxApplications}`))
+      .returning({ auditionApplicationsUsedToday: schema.users.auditionApplicationsUsedToday });
+    return Boolean(row);
+  }
+
   async addScrollUsage(userId: string, count: number): Promise<void> {
     if (count <= 0) {
       return;
@@ -141,21 +162,23 @@ export class QuotaService {
     return snapshot.limits.commentsPerDay;
   }
 
-  paywall(message: string) {
+  paywall(message: string, currentPlan?: PlanName) {
     return {
       paywall: true,
       message,
       remaining: 0,
       hasMore: false,
       profiles: [] as unknown[],
+      paymentOptions: getPaymentOptions(currentPlan),
     };
   }
 
-  throwPaywall(message: string): never {
+  throwPaywall(message: string, currentPlan?: PlanName): never {
     throw new ForbiddenException({
       paywall: true,
       message,
       remaining: 0,
+      paymentOptions: getPaymentOptions(currentPlan),
     });
   }
 }

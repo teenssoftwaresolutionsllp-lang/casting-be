@@ -89,7 +89,7 @@ export class VideoService {
     const snapshot = await this.quotaService.loadFreshQuota(userId);
     const likedOk = await this.quotaService.tryConsumeLike(userId, snapshot.limits.likesPerDay);
     if (!likedOk) {
-      this.quotaService.throwPaywall('Daily like limit reached. Upgrade to continue.');
+      this.quotaService.throwPaywall('Daily like limit reached. Upgrade to continue.', snapshot.plan);
     }
 
     await this.videoRepository.addLike(videoId, userId);
@@ -141,12 +141,13 @@ export class VideoService {
         snapshot.plan === 'free'
           ? 'Like 20 videos today to unlock 2 comments, or upgrade your plan.'
           : 'Daily comment limit reached. Upgrade to continue.',
+        snapshot.plan,
       );
     }
 
     const commentOk = await this.quotaService.tryConsumeComment(userId, maxComments);
     if (!commentOk) {
-      this.quotaService.throwPaywall('Daily comment limit reached. Upgrade to continue.');
+      this.quotaService.throwPaywall('Daily comment limit reached. Upgrade to continue.', snapshot.plan);
     }
 
     const created = await this.videoRepository.createComment({

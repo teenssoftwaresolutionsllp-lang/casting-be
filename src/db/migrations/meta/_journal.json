@@ -5,22 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1785838975958,
-      "tag": "0000_foamy_aaron_stack",
+      "when": 1788501055920,
+      "tag": "0000_illegal_songbird",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1787720619580,
-      "tag": "0001_smooth_fixer",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1788240000000,
-      "tag": "0002_subscription_quota",
+      "when": 1788501055921,
+      "tag": "0001_add_message_and_application_quotas",
       "breakpoints": true
     }
   ]

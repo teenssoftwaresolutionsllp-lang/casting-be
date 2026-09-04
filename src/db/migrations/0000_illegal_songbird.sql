@@ -68,6 +68,63 @@ CREATE TABLE "notifications" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "photo_comment_likes" (
+	"comment_id" uuid NOT NULL,
+	"user_id" uuid NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "photo_comments" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"photo_id" uuid NOT NULL,
+	"user_id" uuid NOT NULL,
+	"text" text NOT NULL,
+	"likes_count" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "photo_likes" (
+	"photo_id" uuid NOT NULL,
+	"user_id" uuid NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "photos" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"creator_id" uuid NOT NULL,
+	"category" text NOT NULL,
+	"title" text NOT NULL,
+	"desc" text NOT NULL,
+	"url" text NOT NULL,
+	"thumb" text NOT NULL,
+	"views_count" integer DEFAULT 0 NOT NULL,
+	"likes_count" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "subscription_history" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"from_plan" text NOT NULL,
+	"to_plan" text NOT NULL,
+	"changed_at" timestamp DEFAULT now() NOT NULL,
+	"reason" text
+);
+--> statement-breakpoint
+CREATE TABLE "subscriptions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"plan" text NOT NULL,
+	"status" text NOT NULL,
+	"amount" integer NOT NULL,
+	"currency" text DEFAULT 'INR' NOT NULL,
+	"provider" text NOT NULL,
+	"provider_subscription_id" text,
+	"provider_payment_id" text,
+	"started_at" timestamp,
+	"ends_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" text,
@@ -113,8 +170,20 @@ CREATE TABLE "users" (
 	"resume" text,
 	"awards" text,
 	"bio" text,
+	"is_paid" boolean DEFAULT false NOT NULL,
+	"subscription_plan" text DEFAULT 'free' NOT NULL,
+	"subscription_status" text DEFAULT 'inactive' NOT NULL,
+	"current_period_end" timestamp,
+	"previous_plan" text,
+	"plan_changed_at" timestamp,
+	"likes_used_today" integer DEFAULT 0 NOT NULL,
+	"comments_used_today" integer DEFAULT 0 NOT NULL,
+	"profile_views_used_today" integer DEFAULT 0 NOT NULL,
+	"scroll_profiles_used_today" integer DEFAULT 0 NOT NULL,
+	"last_quota_reset_at" timestamp DEFAULT now() NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "users_email_unique" UNIQUE("email")
+	CONSTRAINT "users_email_unique" UNIQUE("email"),
+	CONSTRAINT "users_mobile_unique" UNIQUE("mobile")
 );
 --> statement-breakpoint
 CREATE TABLE "video_likes" (
@@ -149,6 +218,15 @@ ALTER TABLE "follows" ADD CONSTRAINT "follows_following_id_users_id_fk" FOREIGN 
 ALTER TABLE "messages" ADD CONSTRAINT "messages_chat_id_chats_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."chats"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_sender_id_users_id_fk" FOREIGN KEY ("sender_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "photo_comment_likes" ADD CONSTRAINT "photo_comment_likes_comment_id_photo_comments_id_fk" FOREIGN KEY ("comment_id") REFERENCES "public"."photo_comments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "photo_comment_likes" ADD CONSTRAINT "photo_comment_likes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "photo_comments" ADD CONSTRAINT "photo_comments_photo_id_photos_id_fk" FOREIGN KEY ("photo_id") REFERENCES "public"."photos"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "photo_comments" ADD CONSTRAINT "photo_comments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "photo_likes" ADD CONSTRAINT "photo_likes_photo_id_photos_id_fk" FOREIGN KEY ("photo_id") REFERENCES "public"."photos"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "photo_likes" ADD CONSTRAINT "photo_likes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "photos" ADD CONSTRAINT "photos_creator_id_users_id_fk" FOREIGN KEY ("creator_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "subscription_history" ADD CONSTRAINT "subscription_history_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "video_likes" ADD CONSTRAINT "video_likes_video_id_videos_id_fk" FOREIGN KEY ("video_id") REFERENCES "public"."videos"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "video_likes" ADD CONSTRAINT "video_likes_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "videos" ADD CONSTRAINT "videos_creator_id_users_id_fk" FOREIGN KEY ("creator_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;

@@ -81,6 +81,10 @@ export const users = pgTable('users', {
   profileViewsUsedToday: integer('profile_views_used_today').default(0).notNull(),
   // Profiles shown in the explore/scroll feed — free = 20 per day
   scrollProfilesUsedToday: integer('scroll_profiles_used_today').default(0).notNull(),
+  // Sending messages in chat — free = 5 per day
+  messagesUsedToday: integer('messages_used_today').default(0).notNull(),
+  // Submitting applications to auditions — free = 1 per day
+  auditionApplicationsUsedToday: integer('audition_applications_used_today').default(0).notNull(),
   lastQuotaResetAt: timestamp('last_quota_reset_at').defaultNow().notNull(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),

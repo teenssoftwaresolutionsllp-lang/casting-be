@@ -284,6 +284,23 @@ curl.exe -X POST http://localhost:3000/auditions/AUDITION_ID/apply `
   -d '{"coverLetter":"I would like to audition for this role."}'
 ```
 
+Audition applications are restricted by subscription tier (Free: 1/day, Pro: 10/day, Pro Max: 50/day). If the user exceeds their daily limit, the server responds with HTTP `403` and a paywall payload including full payment/upgrade options:
+
+```json
+{
+  "statusCode": 403,
+  "paywall": true,
+  "message": "Daily audition application limit reached. Upgrade to continue.",
+  "remaining": 0,
+  "paymentOptions": {
+    "checkoutEndpoint": "/payments/checkout",
+    "verifyEndpoint": "/payments/verify",
+    "plans": [...],
+    "recommendedPlan": "pro"
+  }
+}
+```
+
 ```powershell
 curl.exe http://localhost:3000/applications/me `
   -H "Authorization: Bearer TOKEN_B"
@@ -333,6 +350,23 @@ curl.exe -X POST http://localhost:3000/chats/CHAT_ID/messages `
   -d '{"text":"Hello from the casting app"}'
 ```
 
+Sending messages is restricted by subscription tier (Free: 5/day, Pro: 50/day, Pro Max: 500/day). When a user exceeds their daily allowance, the endpoint returns HTTP `403` with `paywall: true` and payment options:
+
+```json
+{
+  "statusCode": 403,
+  "paywall": true,
+  "message": "Daily message limit reached. Upgrade to continue.",
+  "remaining": 0,
+  "paymentOptions": {
+    "checkoutEndpoint": "/payments/checkout",
+    "verifyEndpoint": "/payments/verify",
+    "plans": [...],
+    "recommendedPlan": "pro"
+  }
+}
+```
+
 Use `TOKEN_B` to read the same chat and message list. A non-participant receives HTTP `403`.
 
 ## 8. Notifications
@@ -356,6 +390,13 @@ curl.exe -X DELETE http://localhost:3000/notifications `
 
 ## 9. Subscription and quota APIs
 
+### View available plans & payment options
+
+```powershell
+curl.exe http://localhost:3000/payments/plans `
+  -H "Authorization: Bearer TOKEN_A"
+```
+
 ### Check current plan and remaining quota
 
 ```powershell
@@ -363,15 +404,15 @@ curl.exe http://localhost:3000/subscriptions/me `
   -H "Authorization: Bearer TOKEN_A"
 ```
 
-The response shows `plan`, `limits`, `usedToday`, `remainingToday`, and the free-comment rule.
+The response shows `plan`, `limits`, `usedToday`, `remainingToday`, `paymentOptions`, and the free-comment rule.
 
 Current limits:
 
-| Plan | New likes/day | Comments/day | Other profiles/day | Explore profiles/day |
-|---|---:|---:|---:|---:|
-| free | 20 | 2 after 20 likes | 5 | 20 |
-| pro | 200 | 30 | 100 | 100 |
-| pro_max | 500 | 100 | 500 | 500 |
+| Plan | Likes/day | Comments/day | Other profiles/day | Explore profiles/day | Messages/day | Audition applications/day |
+|---|---:|---:|---:|---:|---:|---:|
+| free | 20 | 2 after 20 likes | 5 | 20 | 5 | 1 |
+| pro | 200 | 30 | 100 | 100 | 50 | 10 |
+| pro_max | 500 | 100 | 500 | 500 | 500 | 50 |
 
 Counters reset automatically after 24 hours. The server reads plan status from the database. An expired, invalid, or inactive paid subscription is treated as `free`.
 

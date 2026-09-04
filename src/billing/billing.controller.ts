@@ -7,7 +7,7 @@ import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { SubscriptionService } from './subscription.service';
 import { QuotaService } from '../users/quota.service';
-import { getFreeCommentLimit } from '../common/plan-policy';
+import { getFreeCommentLimit, getPaymentOptions } from '../common/plan-policy';
 
 @ApiTags('03 Billing & Payments')
 @ApiBearerAuth()
@@ -19,6 +19,12 @@ export class BillingController {
     private readonly subscriptionService: SubscriptionService,
     private readonly quotaService: QuotaService,
   ) {}
+
+  @Get('payments/plans')
+  @ApiOperation({ summary: 'List available payment/upgrade plans, pricing, and limits' })
+  async getPlans() {
+    return getPaymentOptions();
+  }
 
   @Post('payments/checkout')
   @ApiOperation({ summary: 'Create a Razorpay order. User is not marked paid yet.' })
@@ -33,7 +39,7 @@ export class BillingController {
   }
 
   @Get('subscriptions/me')
-  @ApiOperation({ summary: 'Current plan, remaining daily quota, and plan history. Always from the database.' })
+  @ApiOperation({ summary: 'Current plan, remaining daily quota, payment options, and plan history. Always from the database.' })
   async me(@CurrentUser() user: { sub: string }) {
     const snapshot = await this.quotaService.loadFreshQuota(user.sub);
     const history = await this.subscriptionService.getHistory(user.sub);
@@ -52,13 +58,18 @@ export class BillingController {
         comments: snapshot.user.commentsUsedToday,
         profileViews: snapshot.user.profileViewsUsedToday,
         scrollProfiles: snapshot.user.scrollProfilesUsedToday,
+        messages: snapshot.user.messagesUsedToday ?? 0,
+        auditionApplications: snapshot.user.auditionApplicationsUsedToday ?? 0,
       },
       remainingToday: {
         likes: Math.max(0, snapshot.limits.likesPerDay - snapshot.user.likesUsedToday),
         comments: Math.max(0, commentLimit - snapshot.user.commentsUsedToday),
         profileViews: Math.max(0, snapshot.limits.profileViewsPerDay - snapshot.user.profileViewsUsedToday),
         scrollProfiles: Math.max(0, snapshot.limits.profileScrollsPerDay - snapshot.user.scrollProfilesUsedToday),
+        messages: Math.max(0, snapshot.limits.messagesPerDay - (snapshot.user.messagesUsedToday ?? 0)),
+        auditionApplications: Math.max(0, snapshot.limits.auditionApplicationsPerDay - (snapshot.user.auditionApplicationsUsedToday ?? 0)),
       },
+      paymentOptions: getPaymentOptions(snapshot.plan),
       freeCommentRule:
         snapshot.plan === 'free'
           ? {

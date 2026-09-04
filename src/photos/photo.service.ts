@@ -87,7 +87,7 @@ export class PhotoService {
     const snapshot = await this.quotaService.loadFreshQuota(userId);
     const likedOk = await this.quotaService.tryConsumeLike(userId, snapshot.limits.likesPerDay);
     if (!likedOk) {
-      this.quotaService.throwPaywall('Daily like limit reached. Upgrade to continue.');
+      this.quotaService.throwPaywall('Daily like limit reached. Upgrade to continue.', snapshot.plan);
     }
 
     await this.photoRepository.addLike(photoId, userId);
@@ -138,12 +138,13 @@ export class PhotoService {
         snapshot.plan === 'free'
           ? 'Like 20 photos today to unlock 2 comments, or upgrade your plan.'
           : 'Daily comment limit reached. Upgrade to continue.',
+        snapshot.plan,
       );
     }
 
     const commentOk = await this.quotaService.tryConsumeComment(userId, maxComments);
     if (!commentOk) {
-      this.quotaService.throwPaywall('Daily comment limit reached. Upgrade to continue.');
+      this.quotaService.throwPaywall('Daily comment limit reached. Upgrade to continue.', snapshot.plan);
     }
 
     const created = await this.photoRepository.createComment({
