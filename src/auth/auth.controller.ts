@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -30,5 +31,17 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid email or password credentials.' })
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login or register automatically using Firebase Google ID Token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Google token verified successfully. Returns JWT token and user profile.',
+  })
+  @ApiResponse({ status: 401, description: 'Invalid or expired Google ID token.' })
+  async googleLogin(@Body() dto: GoogleLoginDto) {
+    return this.authService.googleLogin(dto);
   }
 }
