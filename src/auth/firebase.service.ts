@@ -21,7 +21,8 @@ export class FirebaseService implements OnModuleInit {
     }
 
     try {
-      const serviceAccountPath = path.resolve(process.cwd(), 'firebase-service-account.json');
+      const configPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || 'firebase-service-account.json';
+      const serviceAccountPath = path.resolve(process.cwd(), configPath);
       if (fs.existsSync(serviceAccountPath)) {
         const fileContent = fs.readFileSync(serviceAccountPath, 'utf8');
         const serviceAccount = JSON.parse(fileContent);
