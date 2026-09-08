@@ -44,12 +44,15 @@ export class UserRepository {
   }
 
   async update(id: string, updateData: Partial<typeof schema.users.$inferInsert>) {
+    if (!updateData || Object.keys(updateData).length === 0) {
+      return this.findById(id);
+    }
     const [updated] = await this.db
       .update(schema.users)
       .set(updateData)
       .where(eq(schema.users.id, id))
       .returning();
-    return updated;
+    return updated || this.findById(id);
   }
 
   async exploreTalent(

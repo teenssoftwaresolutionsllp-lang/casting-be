@@ -39,10 +39,17 @@ export class UserService {
   }
 
   async updateProfile(id: string, updateData: any) {
-    for (const field of FIELDS_THE_APP_CANNOT_CHANGE) {
-      delete updateData[field];
+    if (!updateData || typeof updateData !== 'object') {
+      return this.findById(id);
     }
-    return this.userRepository.update(id, updateData);
+    const cleanData = { ...updateData };
+    for (const field of FIELDS_THE_APP_CANNOT_CHANGE) {
+      delete cleanData[field];
+    }
+    if (Object.keys(cleanData).length === 0) {
+      return this.findById(id);
+    }
+    return this.userRepository.update(id, cleanData);
   }
 
   async getPublicProfile(currentUserId: string, targetUserId: string) {

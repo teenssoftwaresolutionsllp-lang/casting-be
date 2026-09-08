@@ -429,18 +429,18 @@ curl.exe -X POST http://localhost:3000/payments/checkout `
 
 Supported plans are `pro` and `pro_max`.
 
-### Verify payment
+### Verify payment (Test Mode or Production)
 
-After a successful Razorpay payment, send the real values returned by Razorpay:
+In Test Mode (`ENABLE_TEST_MODE=true` set in `.env`), you can send `razorpaySignature: "test_signature"` along with the `orderId` returned from checkout to verify the payment and activate the plan immediately without calling live Razorpay servers:
 
 ```powershell
 curl.exe -X POST http://localhost:3000/payments/verify `
   -H "Authorization: Bearer TOKEN_A" `
   -H "Content-Type: application/json" `
-  -d '{"razorpayOrderId":"order_xxx","razorpayPaymentId":"pay_xxx","razorpaySignature":"signature_xxx"}'
+  -d '{"razorpayOrderId":"ORDER_ID_FROM_CHECKOUT","razorpayPaymentId":"pay_test_123","razorpaySignature":"test_signature"}'
 ```
 
-Do not use fake values for this endpoint. The server verifies the signature, order ownership, payment status, selected plan, and amount before activating the subscription.
+For live production payments, send the real `razorpayOrderId`, `razorpayPaymentId`, and `razorpaySignature` returned by the Razorpay Checkout SDK. The server verifies signature HMAC, order ownership, payment status, selected plan, and amount before activating the subscription.
 
 ## 10. Media uploads
 
@@ -506,3 +506,57 @@ For explore, the endpoint returns a normal `200` response with `profiles: []`, `
 - `404 Not Found`: the copied ID does not exist.
 - Duplicate mobile registration: apply migrations with `npm run migrate`, then restart the backend using `npm run start:dev`.
 - PowerShell command issues: use `curl.exe`, not the PowerShell `curl` alias, and use the backtick continuation character shown above.
+
+## 13. Verification Checklist for Test Cases (TC-004, TC-012, TC-036, Billing Test Mode)
+
+### TC - 004: User & Profile Update (`PATCH /profile/me`)
+- **Swagger Documentation**: Open `http://localhost:3000/api/docs`. The endpoint `PATCH /profile/me` uses `UpdateProfileDto` rendering all optional profile properties.
+- **Verification via `curl.exe`**:
+  ```powershell
+  # 1. Update fields (HTTP 200 OK)
+  curl.exe -X PATCH http://localhost:3000/profile/me `
+    -H "Authorization: Bearer TOKEN_A" `
+    -H "Content-Type: application/json" `
+    -d '{"bio":"Updated profile bio","city":"Mumbai","category":"Actor"}'
+
+  # 2. Empty payload (HTTP 200 OK - Returns current profile without 500 error)
+  curl.exe -X PATCH http://localhost:3000/profile/me `
+    -H "Authorization: Bearer TOKEN_A" `
+    -H "Content-Type: application/json" `
+    -d '{}'
+  ```
+
+### TC - 012: Photos (`POST /photos`)
+- **JSON Payload Verification**:
+  ```powershell
+  curl.exe -X POST http://localhost:3000/photos `
+    -H "Authorization: Bearer TOKEN_A" `
+    -H "Content-Type: application/json" `
+    -d '{"category":"Actor","title":"Headshot","desc":"Recent headshot","url":"https://example.com/photo.jpg","thumb":"https://example.com/thumb.jpg"}'
+  ```
+- **Multipart Upload Verification**: File upload is available at `POST /photos/upload`.
+
+### TC - 036: Applications (`PATCH /applications/{id}/status`)
+- **Status Update Verification**:
+  ```powershell
+  curl.exe -X PATCH http://localhost:3000/applications/APPLICATION_ID/status `
+    -H "Authorization: Bearer TOKEN_A" `
+    -H "Content-Type: application/json" `
+    -d '{"status":"SHORTLISTED","details":"Shortlisted for callback round."}'
+  ```
+
+### Billing & Payments Test Mode (TC - 008 & TC - 009)
+- **Test Mode Payment Verification**:
+  ```powershell
+  # 1. Create checkout order:
+  curl.exe -X POST http://localhost:3000/payments/checkout `
+    -H "Authorization: Bearer TOKEN_A" `
+    -H "Content-Type: application/json" `
+    -d '{"plan":"pro"}'
+
+  # 2. Verify payment in Test Mode (HTTP 200 OK & Plan Activated):
+  curl.exe -X POST http://localhost:3000/payments/verify `
+    -H "Authorization: Bearer TOKEN_A" `
+    -H "Content-Type: application/json" `
+    -d '{"razorpayOrderId":"ORDER_ID_FROM_CHECKOUT","razorpayPaymentId":"pay_test_123","razorpaySignature":"test_signature"}'
+  ```

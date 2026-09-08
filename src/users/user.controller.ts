@@ -8,10 +8,11 @@ import {
   Body,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('02 Users & Profile')
 @ApiBearerAuth()
@@ -29,8 +30,9 @@ export class UserController {
 
   @Patch('profile/me')
   @ApiOperation({ summary: 'Update profile details for the current user' })
+  @ApiBody({ type: UpdateProfileDto })
   @ApiResponse({ status: 200, description: 'Profile updated successfully.' })
-  async updateProfile(@CurrentUser() user: any, @Body() updateData: any) {
+  async updateProfile(@CurrentUser() user: any, @Body() updateData: UpdateProfileDto) {
     return this.userService.updateProfile(user.sub, updateData);
   }
 
