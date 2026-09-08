@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 import { AuthController } from './auth.controller';
 
 jest.mock('./firebase.service', () => ({
