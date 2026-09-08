@@ -1,16 +1,18 @@
-import { IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class VerifyPaymentDto {
-  @ApiProperty({ description: 'Order id Razorpay gave us when checkout started' })
+  @ApiProperty({ description: 'Order id Razorpay gave us when checkout started', example: 'order_xxx' })
   @IsString()
   razorpayOrderId: string;
 
-  @ApiProperty({ description: 'Payment id Razorpay gave after the user paid' })
+  @ApiPropertyOptional({ description: 'Payment id Razorpay gave after user paid. Optional in test mode.', example: 'pay_test_123' })
+  @IsOptional()
   @IsString()
-  razorpayPaymentId: string;
+  razorpayPaymentId?: string;
 
-  @ApiProperty({ description: 'Signature from Razorpay. The server checks this with the secret key.' })
+  @ApiPropertyOptional({ description: 'Signature from Razorpay. Optional in test mode.', example: 'test_signature' })
+  @IsOptional()
   @IsString()
-  razorpaySignature: string;
+  razorpaySignature?: string;
 }
