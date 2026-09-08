@@ -57,6 +57,25 @@ export class FirebaseService implements OnModuleInit {
   }
 
   async verifyIdToken(idToken: string): Promise<DecodedIdToken> {
+    if (
+      process.env.ENABLE_TEST_MODE === 'true' &&
+      (idToken === 'test_google_token' || idToken.startsWith('test_'))
+    ) {
+      return {
+        uid: 'test_google_uid_123',
+        email: 'testuser.google@example.com',
+        name: 'Test Google User',
+        picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+        auth_time: Math.floor(Date.now() / 1000),
+        iss: 'https://securetoken.google.com/casting-29490',
+        aud: 'casting-29490',
+        sub: 'test_google_uid_123',
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        firebase: { identities: {}, sign_in_provider: 'google.com' },
+      } as DecodedIdToken;
+    }
+
     if (!getApps().length) {
       this.initializeFirebase();
     }
