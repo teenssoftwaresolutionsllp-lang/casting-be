@@ -19,9 +19,13 @@ import {
 } from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { VideoService } from '../videos/video.service';
-import type { Express } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+
+type UploadedFile = {
+  mimetype: string;
+  buffer: Buffer;
+};
 
 @ApiTags('04 Media Upload')
 @Controller('media')
@@ -47,7 +51,7 @@ export class MediaController {
     status: 201,
     description: 'Returns the secure upload URL from Cloudinary.',
   })
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+  async uploadFile(@UploadedFile() file: UploadedFile) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -83,7 +87,7 @@ export class PhotosController {
   })
   async uploadPhoto(
     @CurrentUser() user: any,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: UploadedFile,
     @Body() body: Record<string, any>,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -138,7 +142,7 @@ export class VideoUploadController {
   })
   async uploadVideo(
     @CurrentUser() user: any,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: UploadedFile,
     @Body() body: Record<string, any>,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
