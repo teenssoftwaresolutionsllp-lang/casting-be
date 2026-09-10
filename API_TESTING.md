@@ -258,6 +258,24 @@ curl.exe -X POST http://localhost:3000/auditions `
 
 Copy `AUDITION_ID` from the response.
 
+### Free-user audition posting limit
+
+A Free user can post **1 audition per rolling 7-day window**. Use a fresh Free account, or wait until the current window expires.
+
+1. Send the `POST /auditions` request above once. It should return HTTP `201`.
+2. Send it again with the same or different audition data. It should return HTTP `403`:
+
+```json
+{
+  "statusCode": 403,
+  "paywall": true,
+  "message": "Weekly audition posting limit reached. Upgrade to continue.",
+  "remaining": 0
+}
+```
+
+The limit applies to the authenticated user who is posting the audition. Pro and Pro Max users are not restricted by this content quota.
+
 ```powershell
 curl.exe http://localhost:3000/auditions `
   -H "Authorization: Bearer TOKEN_A"
@@ -404,7 +422,17 @@ curl.exe http://localhost:3000/subscriptions/me `
   -H "Authorization: Bearer TOKEN_A"
 ```
 
-The response shows `plan`, `limits`, `usedToday`, `remainingToday`, `paymentOptions`, and the free-comment rule.
+The response shows `plan`, `limits`, `contentLimits`, `usedToday`, `remainingToday`, `paymentOptions`, and the free-comment rule. `contentLimits` is:
+
+```json
+{
+  "photosPerDay": 3,
+  "videosPerWeek": 1,
+  "auditionsPerWeek": 1
+}
+```
+
+For Pro and Pro Max, these three `contentLimits` values are `null`, meaning no content quota is enforced.
 
 Current limits:
 
@@ -464,6 +492,19 @@ curl.exe -X POST http://localhost:3000/videos/upload `
   -F "category=Actor"
 ```
 
+Free users can upload/post **1 video per rolling 7-day window**. The first request should return HTTP `201`. A second request within 7 days returns HTTP `403`:
+
+```json
+{
+  "statusCode": 403,
+  "paywall": true,
+  "message": "Weekly video upload limit reached. Upgrade to continue.",
+  "remaining": 0
+}
+```
+
+The same limit is enforced on `POST /videos` when creating a video with JSON instead of multipart upload.
+
 ### Photo upload
 
 ```powershell
@@ -474,7 +515,22 @@ curl.exe -X POST http://localhost:3000/photos/upload `
   -F "description=Test upload"
 ```
 
+Free users can upload/post **3 photos per rolling 24-hour window**. Run the photo upload request three times. The fourth request returns HTTP `403`:
+
+```json
+{
+  "statusCode": 403,
+  "paywall": true,
+  "message": "Daily photo upload limit reached. Upgrade to continue.",
+  "remaining": 0
+}
+```
+
+The same limit is enforced on `POST /photos` when creating a photo with JSON. Multipart photo uploads are stored in the `photos` table, and both creation paths count toward the same limit.
+
 Upload limits are 100 MB for generic media, 500 MB for videos, and 50 MB for photos.
+
+The generic `POST /media/upload` endpoint only returns a Cloudinary URL and does not create a photo/video post, so it does not consume these content quotas. It is currently public and should not be used to test plan restrictions.
 
 ## 11. How free-user denial works
 
@@ -486,7 +542,7 @@ The client does not decide whether a user is paid. For likes, comments, profile 
 4. Atomically checks and increments the relevant counter.
 5. Returns a paywall response when the limit is exhausted.
 
-For a denied action, handle HTTP `403` and show an upgrade flow when `paywall` is `true`:
+For a denied action, handle HTTP `403` and show an upgrade flow when `paywall` is `true`. Content quota denials use the same response shape:
 
 ```json
 {
@@ -561,3 +617,17 @@ For explore, the endpoint returns a normal `200` response with `profiles: []`, `
     -H "Content-Type: application/json" `
     -d '{"razorpayOrderId":"ORDER_ID_FROM_CHECKOUT"}'
   ```
+
+## 14. Content Quota Test Matrix
+
+Use a Free-plan token such as `TOKEN_A`. Run `GET /subscriptions/me` first to confirm that `plan` is `free`.
+
+| API to test | Free limit | Test sequence | Expected denial |
+|---|---:|---|---|
+| `POST /photos/upload` | 3 per rolling 24 hours | Upload 3 photos, then upload a 4th | HTTP `403`, `Daily photo upload limit reached...` |
+| `POST /photos` | 3 per rolling 24 hours | Create 3 JSON photo posts, then create a 4th | HTTP `403`, `Daily photo upload limit reached...` |
+| `POST /videos/upload` | 1 per rolling 7 days | Upload 1 video, then upload a 2nd | HTTP `403`, `Weekly video upload limit reached...` |
+| `POST /videos` | 1 per rolling 7 days | Create 1 JSON video post, then create a 2nd | HTTP `403`, `Weekly video upload limit reached...` |
+| `POST /auditions` | 1 per rolling 7 days | Create 1 audition, then create a 2nd | HTTP `403`, `Weekly audition posting limit reached...` |
+
+Every denied response includes `paywall: true`, `remaining: 0`, and `paymentOptions`. Use a new Free account or wait for the applicable rolling window before repeating a test.

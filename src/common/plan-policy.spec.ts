@@ -1,4 +1,5 @@
 import {
+  CONTENT_LIMITS,
   PLAN_LIMITS,
   PLAN_PRICES,
   PAID_PERIOD_DAYS,
@@ -9,6 +10,18 @@ import {
 } from './plan-policy';
 
 describe('Plan Policy', () => {
+  describe('CONTENT_LIMITS', () => {
+    it('limits free content creation and leaves paid plans unrestricted', () => {
+      expect(CONTENT_LIMITS.free).toEqual({
+        photosPerDay: 3,
+        videosPerWeek: 1,
+        auditionsPerWeek: 1,
+      });
+      expect(CONTENT_LIMITS.pro.photosPerDay).toBeNull();
+      expect(CONTENT_LIMITS.pro_max.videosPerWeek).toBeNull();
+    });
+  });
+
   describe('PLAN_LIMITS', () => {
     it('defines limits for free, pro, and pro_max', () => {
       expect(PLAN_LIMITS.free).toEqual({

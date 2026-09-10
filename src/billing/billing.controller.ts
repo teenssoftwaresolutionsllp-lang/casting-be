@@ -7,7 +7,7 @@ import { CreateCheckoutDto } from './dto/create-checkout.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
 import { SubscriptionService } from './subscription.service';
 import { QuotaService } from '../users/quota.service';
-import { getFreeCommentLimit, getPaymentOptions } from '../common/plan-policy';
+import { CONTENT_LIMITS, getFreeCommentLimit, getPaymentOptions } from '../common/plan-policy';
 
 @ApiTags('03 Billing & Payments')
 @ApiBearerAuth()
@@ -53,6 +53,7 @@ export class BillingController {
       previousPlan: snapshot.user.previousPlan,
       planChangedAt: snapshot.user.planChangedAt,
       limits: snapshot.limits,
+      contentLimits: CONTENT_LIMITS[snapshot.plan],
       usedToday: {
         likes: snapshot.user.likesUsedToday,
         comments: snapshot.user.commentsUsedToday,

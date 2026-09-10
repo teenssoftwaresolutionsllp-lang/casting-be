@@ -1,11 +1,12 @@
 import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, count, eq, gte, sql } from 'drizzle-orm';
 import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 import {
   getFreeCommentLimit,
   getPaymentOptions,
+  CONTENT_LIMITS,
   parsePlanName,
   PLAN_LIMITS,
   PlanLimits,
@@ -141,6 +142,70 @@ export class QuotaService {
       .where(and(eq(schema.users.id, userId), sql`${schema.users.auditionApplicationsUsedToday} < ${maxApplications}`))
       .returning({ auditionApplicationsUsedToday: schema.users.auditionApplicationsUsedToday });
     return Boolean(row);
+  }
+
+  async ensureCanCreatePhoto(userId: string): Promise<void> {
+    const snapshot = await this.loadFreshQuota(userId);
+    const limit = CONTENT_LIMITS[snapshot.plan].photosPerDay;
+    if (limit === null) return;
+
+    const since = new Date(Date.now() - ONE_DAY_MS);
+    const [photoRows, uploadedPhotoRows] = await Promise.all([
+      this.db
+        .select({ total: count() })
+        .from(schema.photos)
+        .where(and(eq(schema.photos.creatorId, userId), gte(schema.photos.createdAt, since))),
+      this.db
+        .select({ total: count() })
+        .from(schema.videos)
+        .where(
+          and(
+            eq(schema.videos.creatorId, userId),
+            eq(schema.videos.category, 'Photos'),
+            gte(schema.videos.createdAt, since),
+          ),
+        ),
+    ]);
+    const totalPhotos = Number(photoRows[0]?.total ?? 0) + Number(uploadedPhotoRows[0]?.total ?? 0);
+    if (totalPhotos >= limit) {
+      this.throwPaywall('Daily photo upload limit reached. Upgrade to continue.', snapshot.plan);
+    }
+  }
+
+  async ensureCanCreateVideo(userId: string): Promise<void> {
+    const snapshot = await this.loadFreshQuota(userId);
+    const limit = CONTENT_LIMITS[snapshot.plan].videosPerWeek;
+    if (limit === null) return;
+
+    const since = new Date(Date.now() - 7 * ONE_DAY_MS);
+    const [rows] = await this.db
+      .select({ total: count() })
+      .from(schema.videos)
+      .where(
+        and(
+          eq(schema.videos.creatorId, userId),
+          sql`${schema.videos.category} <> 'Photos'`,
+          gte(schema.videos.createdAt, since),
+        ),
+      );
+    if (Number(rows?.total ?? 0) >= limit) {
+      this.throwPaywall('Weekly video upload limit reached. Upgrade to continue.', snapshot.plan);
+    }
+  }
+
+  async ensureCanCreateAudition(userId: string): Promise<void> {
+    const snapshot = await this.loadFreshQuota(userId);
+    const limit = CONTENT_LIMITS[snapshot.plan].auditionsPerWeek;
+    if (limit === null) return;
+
+    const since = new Date(Date.now() - 7 * ONE_DAY_MS);
+    const [rows] = await this.db
+      .select({ total: count() })
+      .from(schema.auditions)
+      .where(and(eq(schema.auditions.creatorId, userId), gte(schema.auditions.createdAt, since)));
+    if (Number(rows?.total ?? 0) >= limit) {
+      this.throwPaywall('Weekly audition posting limit reached. Upgrade to continue.', snapshot.plan);
+    }
   }
 
   async addScrollUsage(userId: string, count: number): Promise<void> {

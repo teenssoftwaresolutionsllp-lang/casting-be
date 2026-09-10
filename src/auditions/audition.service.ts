@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/commo
 import { AuditionRepository } from './audition.repository';
 import { ApplicationRepository } from '../applications/application.repository';
 import { CreateAuditionDto } from './dto/create-audition.dto';
+import { QuotaService } from '../users/quota.service';
 
 @Injectable()
 export class AuditionService {
@@ -10,9 +11,11 @@ export class AuditionService {
     // inject application repository to check if user has already applied
     @Inject(forwardRef(() => ApplicationRepository))
     private readonly applicationRepository: ApplicationRepository,
+    private readonly quotaService: QuotaService,
   ) {}
 
   async createAudition(creatorId: string, dto: CreateAuditionDto) {
+    await this.quotaService.ensureCanCreateAudition(creatorId);
     return this.auditionRepository.create({
       creatorId,
       title: dto.title,

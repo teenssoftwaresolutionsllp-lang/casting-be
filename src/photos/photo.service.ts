@@ -12,6 +12,7 @@ export class PhotoService {
   ) {}
 
   async createPhoto(creatorId: string, dto: CreatePhotoDto) {
+    await this.quotaService.ensureCanCreatePhoto(creatorId);
     return this.photoRepository.create({
       creatorId,
       category: dto.category,

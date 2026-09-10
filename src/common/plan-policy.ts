@@ -10,6 +10,21 @@
 
 export type PlanName = 'free' | 'pro' | 'pro_max';
 
+export type ContentLimit = number | null;
+
+export type ContentLimits = {
+  photosPerDay: ContentLimit;
+  videosPerWeek: ContentLimit;
+  auditionsPerWeek: ContentLimit;
+};
+
+// null means that the paid plan has no quota for that content type.
+export const CONTENT_LIMITS: Record<PlanName, ContentLimits> = {
+  free: { photosPerDay: 3, videosPerWeek: 1, auditionsPerWeek: 1 },
+  pro: { photosPerDay: null, videosPerWeek: null, auditionsPerWeek: null },
+  pro_max: { photosPerDay: null, videosPerWeek: null, auditionsPerWeek: null },
+};
+
 export type PlanLimits = {
   likesPerDay: number;
   commentsPerDay: number;
@@ -97,6 +112,7 @@ export type PaymentPlanOption = {
   currency: string;
   periodDays: number;
   limits: PlanLimits;
+  contentLimits: ContentLimits;
 };
 
 export type PaymentOptionsResponse = {
@@ -116,6 +132,7 @@ export function getPaymentOptions(currentPlan?: PlanName): PaymentOptionsRespons
     currency: PLAN_PRICES[plan].currency,
     periodDays: PAID_PERIOD_DAYS,
     limits: PLAN_LIMITS[plan],
+    contentLimits: CONTENT_LIMITS[plan],
   }));
 
   const recommendedPlan: Exclude<PlanName, 'free'> =

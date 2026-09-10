@@ -12,6 +12,11 @@ export class VideoService {
   ) {}
 
   async createVideo(creatorId: string, dto: CreateVideoDto) {
+    if (dto.category === 'Photos') {
+      await this.quotaService.ensureCanCreatePhoto(creatorId);
+    } else {
+      await this.quotaService.ensureCanCreateVideo(creatorId);
+    }
     return this.videoRepository.create({
       creatorId,
       category: dto.category,

@@ -18,9 +18,11 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { MediaService } from './media.service';
-import { VideoService } from '../videos/video.service';
+import { PhotoService } from '../photos/photo.service';
+import { VideoService as VideoPostService } from '../videos/video.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { QuotaService } from '../users/quota.service';
 
 type UploadedFile = {
   mimetype: string;
@@ -68,7 +70,8 @@ export class MediaController {
 export class PhotosController {
   constructor(
     private readonly mediaService: MediaService,
-    private readonly videoService: VideoService,
+    private readonly photoService: PhotoService,
+    private readonly quotaService: QuotaService,
   ) {}
 
   @Post('upload')
@@ -91,26 +94,24 @@ export class PhotosController {
     @Body() body: Record<string, any>,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
+    await this.quotaService.ensureCanCreatePhoto(user.sub);
     const url = await this.mediaService.uploadFile(file, 'photos');
-    
-    // Save photo as a media item with category 'Photos' so it shows in feeds/portfolio
-    const photoPost = await this.videoService.createVideo(user.sub, {
-      category: 'Photos',
+
+    const photoPost = await this.photoService.createPhoto(user.sub, {
+      category: body?.category || 'Portrait',
       title: body?.title || 'Untitled Photo',
       desc: body?.description || 'No description',
       url,
-      thumb: url, // For photos, the photo URL itself is the thumbnail!
+      thumb: url,
     });
 
-    // Return the full populated post details matching what the feed expects
-    return this.videoService.findOne(photoPost.id, user.sub);
+    return this.photoService.findOne(photoPost.id, user.sub);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all photos' })
   async getPhotos(@CurrentUser() user: any) {
-    // Photos are stored in the videos table with category = 'Photos'
-    return this.videoService.findAll(user.sub, 'Photos');
+    return this.photoService.findAll(user.sub);
   }
 }
 
@@ -122,7 +123,8 @@ export class PhotosController {
 export class VideoUploadController {
   constructor(
     private readonly mediaService: MediaService,
-    private readonly videoService: VideoService,
+    private readonly videoService: VideoPostService,
+    private readonly quotaService: QuotaService,
   ) {}
 
   @Post('upload')
@@ -146,6 +148,7 @@ export class VideoUploadController {
     @Body() body: Record<string, any>,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
+    await this.quotaService.ensureCanCreateVideo(user.sub);
     const url = await this.mediaService.uploadFile(file, 'videos');
     
     // Save to videos database table
