@@ -180,6 +180,8 @@ CREATE TABLE "users" (
 	"comments_used_today" integer DEFAULT 0 NOT NULL,
 	"profile_views_used_today" integer DEFAULT 0 NOT NULL,
 	"scroll_profiles_used_today" integer DEFAULT 0 NOT NULL,
+	"messages_used_today" integer DEFAULT 0 NOT NULL,
+	"audition_applications_used_today" integer DEFAULT 0 NOT NULL,
 	"last_quota_reset_at" timestamp DEFAULT now() NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "users_email_unique" UNIQUE("email"),

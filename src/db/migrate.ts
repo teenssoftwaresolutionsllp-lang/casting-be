@@ -23,12 +23,6 @@ async function run() {
   try {
     await client.connect();
     console.log('Connection established. Running Drizzle migrations...');
-    
-    // Ensure all required quota columns exist
-    await client.query(`
-      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "messages_used_today" integer DEFAULT 0 NOT NULL;
-      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "audition_applications_used_today" integer DEFAULT 0 NOT NULL;
-    `);
 
     const db = drizzle(client);
     

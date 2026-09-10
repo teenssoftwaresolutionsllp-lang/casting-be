@@ -66,6 +66,10 @@ All protected requests use:
 Authorization: Bearer TOKEN_A
 ```
 
+Use a token returned by `/auth/login` or `/auth/register` from the same server URL that
+you call later. A token issued by a different deployment, or before changing
+`JWT_SECRET`, returns `401 Unauthorized`.
+
 ## 3. Profile APIs
 
 ### Read your profile

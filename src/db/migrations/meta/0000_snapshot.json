@@ -1,5 +1,5 @@
 {
-  "id": "8e045cbb-4737-402a-86a5-16954b725621",
+  "id": "c9fdfb24-c775-4394-aef2-bdfe2d8afb0d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1364,6 +1364,20 @@
         },
         "scroll_profiles_used_today": {
           "name": "scroll_profiles_used_today",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "messages_used_today": {
+          "name": "messages_used_today",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "audition_applications_used_today": {
+          "name": "audition_applications_used_today",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,

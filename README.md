@@ -19,7 +19,14 @@ PORT=3000
 DATABASE_URL="postgres://postgres:password@localhost:5432/castingdb"
 
 # JWT Secret
-JWT_SECRET="supersecretjwtkeyforcastingapp2026"
+JWT_SECRET="replace-with-a-long-random-secret"
+
+# Razorpay (server-side only; never expose the secret to the frontend)
+RAZORPAY_KEY_ID="rzp_test_your_key_id"
+RAZORPAY_KEY_SECRET="your_key_secret"
+
+# Only enable this for local payment-flow testing, never in production
+ENABLE_TEST_MODE="false"
 
 # Cloudinary Setup (Optional - Falls back to mock if not provided)
 CLOUDINARY_CLOUD_NAME=""
@@ -58,6 +65,23 @@ npm run start:dev
 # production mode
 npm run start:prod
 ```
+
+## Render environment variables
+
+Add these under the backend service's **Environment** settings in Render, then redeploy:
+
+```text
+DATABASE_URL=<your production PostgreSQL URL>
+JWT_SECRET=<one stable long random secret>
+RAZORPAY_KEY_ID=rzp_test_<your test key id>
+RAZORPAY_KEY_SECRET=<your test key secret>
+ENABLE_TEST_MODE=false
+```
+
+After changing `JWT_SECRET`, all previously issued JWTs are invalid. Log in again using
+the same base URL as the checkout request and use the returned token. Razorpay keys are
+read by the backend only when `/payments/checkout` creates an order; they do not belong
+in the request body or Swagger parameters.
 
 ## API Documentation (Swagger)
 

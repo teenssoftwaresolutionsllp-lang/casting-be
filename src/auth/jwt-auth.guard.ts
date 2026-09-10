@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -9,13 +10,19 @@ import { Request } from 'express';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  private readonly logger = new Logger(JwtAuthGuard.name);
+
   constructor(private readonly jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
+    const authorization = request.headers.authorization;
     const token = this.extractTokenFromHeader(request);
-    
+
     if (!token) {
+      this.logger.warn(
+        `${request.method} ${request.originalUrl || request.url} rejected: ${authorization ? 'malformed Authorization header' : 'Authorization header is missing'}`,
+      );
       throw new UnauthorizedException('Authentication token is missing.');
     }
 
@@ -28,7 +35,12 @@ export class JwtAuthGuard implements CanActivate {
       // so that we can access it in our route handlers via decorators
       // Payload is a name tag only. Quota and paid checks always re-read the database.
       request['user'] = payload;
+      this.logger.log(`${request.method} ${request.originalUrl || request.url} authenticated for user ${payload.sub}`);
     } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `${request.method} ${request.originalUrl || request.url} rejected during JWT verification: ${reason}`,
+      );
       throw new UnauthorizedException('Invalid or expired authentication token.');
     }
     return true;
