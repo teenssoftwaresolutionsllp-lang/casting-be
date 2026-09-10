@@ -8,12 +8,13 @@ import {
   Body,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
-@ApiTags('Users & Profile')
+@ApiTags('02 Users & Profile')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -29,13 +30,18 @@ export class UserController {
 
   @Patch('profile/me')
   @ApiOperation({ summary: 'Update profile details for the current user' })
+  @ApiBody({ type: UpdateProfileDto })
   @ApiResponse({ status: 200, description: 'Profile updated successfully.' })
-  async updateProfile(@CurrentUser() user: any, @Body() updateData: any) {
+  async updateProfile(@CurrentUser() user: any, @Body() updateData: UpdateProfileDto) {
     return this.userService.updateProfile(user.sub, updateData);
   }
 
   @Get('users/explore')
-  @ApiOperation({ summary: 'Search and browse casting artists and talent' })
+  @ApiOperation({
+    summary: 'Search and browse casting artists and talent',
+    description:
+      'Returns { profiles, paywall, remaining, hasMore }. After the daily scroll cap the list is empty and paywall=true. The app must stop requesting more pages.',
+  })
   @ApiQuery({ name: 'query', required: false, description: 'Filter creators by name' })
   @ApiQuery({ name: 'category', required: false, description: 'Filter creators by category (e.g., Actor, Model, Dancer)' })
   @ApiResponse({ status: 200, description: 'Returns matching talent lists.' })

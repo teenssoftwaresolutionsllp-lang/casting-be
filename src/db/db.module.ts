@@ -15,7 +15,8 @@ export const DRIZZLE_DB = 'DRIZZLE_DB';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const connectionString = configService.get<string>('DATABASE_URL');
-        if (!connectionString) {
+       if (!connectionString)
+        {
           throw new Error('DATABASE_URL is not set in environment variables');
         }
         const pool = new Pool({

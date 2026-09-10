@@ -19,11 +19,15 @@ import {
 } from '@nestjs/swagger';
 import { MediaService } from './media.service';
 import { VideoService } from '../videos/video.service';
-import type { Express } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
-@ApiTags('Media')
+type UploadedFile = {
+  mimetype: string;
+  buffer: Buffer;
+};
+
+@ApiTags('04 Media Upload')
 @Controller('media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
@@ -47,7 +51,7 @@ export class MediaController {
     status: 201,
     description: 'Returns the secure upload URL from Cloudinary.',
   })
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+  async uploadFile(@UploadedFile() file: UploadedFile) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -57,7 +61,7 @@ export class MediaController {
 }
 
 // ─── /photos controller ──────────────────────────────────────────────────────
-@ApiTags('Photos')
+@ApiTags('06 Photos')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('photos')
@@ -67,7 +71,7 @@ export class PhotosController {
     private readonly videoService: VideoService,
   ) {}
 
-  @Post()
+  @Post('upload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 50 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload a photo to portfolio' })
@@ -83,7 +87,7 @@ export class PhotosController {
   })
   async uploadPhoto(
     @CurrentUser() user: any,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: UploadedFile,
     @Body() body: Record<string, any>,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -111,7 +115,7 @@ export class PhotosController {
 }
 
 // ─── /videos/upload controller ───────────────────────────────────────────────
-@ApiTags('Videos')
+@ApiTags('05 Videos')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('videos')
@@ -138,7 +142,7 @@ export class VideoUploadController {
   })
   async uploadVideo(
     @CurrentUser() user: any,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: UploadedFile,
     @Body() body: Record<string, any>,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');

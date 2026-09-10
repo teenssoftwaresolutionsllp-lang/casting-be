@@ -24,14 +24,27 @@ async function run() {
     await client.connect();
     console.log('Connection established. Running Drizzle migrations...');
     
+    // Ensure all required quota columns exist
+    await client.query(`
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "messages_used_today" integer DEFAULT 0 NOT NULL;
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "audition_applications_used_today" integer DEFAULT 0 NOT NULL;
+    `);
+
     const db = drizzle(client);
     
     // Run the migrations against the database
-    await migrate(db, { 
-      migrationsFolder: path.join(__dirname, 'migrations') 
-    });
-    
-    console.log('Database migrated successfully!');
+    try {
+      await migrate(db, { 
+        migrationsFolder: path.join(__dirname, 'migrations') 
+      });
+      console.log('Database migrated successfully!');
+    } catch (mErr: any) {
+      if (mErr?.message?.includes('already exists')) {
+        console.log('Existing tables detected, schema verified.');
+      } else {
+        throw mErr;
+      }
+    }
   } catch (err) {
     console.error('Database migration failed:', err);
     process.exit(1);

@@ -44,15 +44,22 @@ export class UserRepository {
   }
 
   async update(id: string, updateData: Partial<typeof schema.users.$inferInsert>) {
+    if (!updateData || Object.keys(updateData).length === 0) {
+      return this.findById(id);
+    }
     const [updated] = await this.db
       .update(schema.users)
       .set(updateData)
       .where(eq(schema.users.id, id))
       .returning();
-    return updated;
+    return updated || this.findById(id);
   }
 
-  async exploreTalent(queryName?: string, category?: string) {
+  async exploreTalent(
+    queryName?: string,
+    category?: string,
+    options?: { limit: number; offset: number },
+  ) {
     let whereClause;
     
     // Always filter for role = 'artist' for exploring talent
@@ -72,7 +79,15 @@ export class UserRepository {
       whereClause = baseCondition;
     }
 
-    return this.db.select().from(schema.users).where(whereClause);
+    const limit = options?.limit ?? 20;
+    const offset = options?.offset ?? 0;
+
+    return this.db
+      .select()
+      .from(schema.users)
+      .where(whereClause)
+      .limit(limit)
+      .offset(offset);
   }
 
   // Follow relationships

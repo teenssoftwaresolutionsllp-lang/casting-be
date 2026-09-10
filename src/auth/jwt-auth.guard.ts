@@ -26,6 +26,7 @@ export class JwtAuthGuard implements CanActivate {
       }
       // We assign the payload to the request object here
       // so that we can access it in our route handlers via decorators
+      // Payload is a name tag only. Quota and paid checks always re-read the database.
       request['user'] = payload;
     } catch (err) {
       throw new UnauthorizedException('Invalid or expired authentication token.');

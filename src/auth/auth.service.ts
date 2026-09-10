@@ -80,7 +80,7 @@ export class AuthService {
       bio: dto.bio,
     });
 
-    const token = await this.generateToken(user.id, user.email || '', user.role);
+    const token = await this.generateToken(user);
 
     return {
       token,
@@ -90,6 +90,8 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         profilePhoto: user.profilePhoto,
+        isPaid: user.isPaid,
+        plan: user.subscriptionPlan,
       },
     };
   }
@@ -105,7 +107,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    const token = await this.generateToken(user.id, user.email || '', user.role);
+    const token = await this.generateToken(user);
 
     return {
       token,
@@ -115,12 +117,27 @@ export class AuthService {
         fullName: user.fullName,
         role: user.role,
         profilePhoto: user.profilePhoto,
+        isPaid: user.isPaid,
+        plan: user.subscriptionPlan,
       },
     };
   }
 
-  private async generateToken(userId: string, email: string, role: string): Promise<string> {
-    const payload = { sub: userId, email, role };
+  private async generateToken(user: {
+    id: string;
+    email: string | null;
+    role: string;
+    isPaid?: boolean;
+    subscriptionPlan?: string | null;
+  }): Promise<string> {
+    // JWT is a name tag, not the lock. Paid routes still read the database.
+    const payload = {
+      sub: user.id,
+      email: user.email || '',
+      role: user.role,
+      isPaid: Boolean(user.isPaid),
+      plan: user.subscriptionPlan || 'free',
+    };
     return this.jwtService.signAsync(payload);
   }
 }

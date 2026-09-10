@@ -27,7 +27,10 @@ export class MediaService {
     }
   }
 
-  async uploadFile(file: Express.Multer.File, folder = 'talent_casting'): Promise<string> {
+  async uploadFile(
+    file: { mimetype: string; buffer: Buffer },
+    folder = 'talent_casting',
+  ): Promise<string> {
     if (!this.isCloudinaryConfigured) {
       this.logger.warn('Cloudinary not configured. Returning mock URL.');
       if (file.mimetype.startsWith('video/')) {

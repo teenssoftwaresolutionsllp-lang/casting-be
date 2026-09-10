@@ -7,10 +7,12 @@ import { MediaModule } from './media/media.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './users/user.module';
 import { VideoModule } from './videos/video.module';
+import { PhotoModule } from './photos/photo.module';
 import { AuditionModule } from './auditions/audition.module';
 import { ApplicationModule } from './applications/application.module';
 import { ChatModule } from './chat/chat.module';
 import { NotificationModule } from './notifications/notification.module';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -32,10 +34,12 @@ import { NotificationModule } from './notifications/notification.module';
     
     // Application feature modules
     DbModule,
-    MediaModule,
-    UserModule,
     AuthModule,
+    UserModule,
+    BillingModule,
+    MediaModule,
     VideoModule,
+    PhotoModule,
     AuditionModule,
     ApplicationModule,
     ChatModule,
