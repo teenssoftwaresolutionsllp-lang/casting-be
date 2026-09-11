@@ -34,7 +34,10 @@ export class RazorpayClient {
   }
 
   assertConfigured() {
-    if (!this.keyId || !this.keySecret) {
+    const hasPlaceholderKeys =
+      this.keyId.includes('your_razorpay') || this.keySecret.includes('your_razorpay');
+
+    if (!this.keyId || !this.keySecret || hasPlaceholderKeys) {
       throw new BadRequestException(
         'Payments are not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to the .env file.',
       );
