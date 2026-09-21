@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserRepository } from '../users/user.repository';
@@ -13,6 +14,8 @@ import { QuotaService } from '../users/quota.service';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     private readonly razorpay: RazorpayClient,
     private readonly userRepository: UserRepository,
@@ -53,6 +56,9 @@ export class PaymentsService {
         plan,
       },
     });
+    this.logger.log(
+      `Razorpay order created: orderId=${order.id}, userId=${userId}, plan=${plan}, amount=${price.amountPaise}`,
+    );
 
     const subscription = await this.subscriptionRepository.create({
       userId,
@@ -86,6 +92,10 @@ export class PaymentsService {
   ) {
     const paymentId = dto.razorpayPaymentId || `pay_test_${Date.now()}`;
     const signature = dto.razorpaySignature || 'test_signature';
+
+    this.logger.log(
+      `Payment verification requested: orderId=${dto.razorpayOrderId}, paymentId=${paymentId}, userId=${userId}, signatureProvided=${Boolean(dto.razorpaySignature)}`,
+    );
 
     const isTestMode =
       process.env.ENABLE_TEST_MODE === 'true' ||
