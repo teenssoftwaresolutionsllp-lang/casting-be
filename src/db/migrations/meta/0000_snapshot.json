@@ -1,5 +1,5 @@
 {
-  "id": "08af5399-3ecf-4c10-92af-71300342f65b",
+  "id": "33442395-e2de-404e-8dff-99437175b747",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -871,6 +871,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "email"
+          ]
+        },
+        "users_mobile_unique": {
+          "name": "users_mobile_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "mobile"
           ]
         }
       },

@@ -6,7 +6,7 @@ import { DbModule } from './db/db.module';
 import { MediaModule } from './media/media.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './users/user.module';
-import { VideoModule } from './videos/video.module';
+import { VideoModule } from './videos/video.module';  
 import { AuditionModule } from './auditions/audition.module';
 import { ApplicationModule } from './applications/application.module';
 import { ChatModule } from './chat/chat.module';
@@ -18,7 +18,6 @@ import { NotificationModule } from './notifications/notification.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    
     // Global JWT registration
     JwtModule.registerAsync({
       global: true,

@@ -114,7 +114,8 @@ CREATE TABLE "users" (
 	"awards" text,
 	"bio" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "users_email_unique" UNIQUE("email")
+	CONSTRAINT "users_email_unique" UNIQUE("email"),
+	CONSTRAINT "users_mobile_unique" UNIQUE("mobile")
 );
 --> statement-breakpoint
 CREATE TABLE "video_likes" (
