@@ -34,6 +34,15 @@ export class UserRepository {
     return results[0] || null;
   }
 
+  async findByUsername(username: string) {
+    const results = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.username, username))
+      .limit(1);
+    return results[0] || null;
+  }
+
   async findByMobile(mobile: string) {
     const results = await this.db
       .select()

@@ -1,7 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsArray, MinLength } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsArray, MinLength, IsInt, Min, Max } from 'class-validator';
 
 export class RegisterDto {
+  @ApiProperty({ example: 'jane_doe', description: 'Unique username' })
+  @IsString()
+  @IsNotEmpty()
+  username: string;
+
   @ApiProperty({ example: 'user@example.com', description: 'User email address' })
   @IsEmail()
   @IsNotEmpty()
@@ -13,20 +18,26 @@ export class RegisterDto {
   @IsNotEmpty()
   password: string;
 
-  @ApiProperty({ example: 'Jane Doe', description: 'User full name' })
+  @ApiPropertyOptional({ example: 'Jane Doe', description: 'User full name; defaults to username when omitted' })
   @IsString()
-  @IsNotEmpty()
-  fullName: string;
+  @IsOptional()
+  fullName?: string;
 
   @ApiProperty({ example: 'artist', enum: ['artist', 'audience'], description: 'Account role type' })
   @IsEnum(['artist', 'audience'])
   @IsNotEmpty()
   role: string;
 
-  @ApiPropertyOptional({ example: '+91 9876543210', description: 'Contact phone number' })
+  @ApiProperty({ example: '+91 9876543210', description: 'Contact phone number' })
   @IsString()
-  @IsOptional()
-  mobile?: string;
+  @IsNotEmpty()
+  mobile: string;
+
+  @ApiProperty({ example: 28, description: 'Age in years' })
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  age: number;
 
   @ApiPropertyOptional({ example: 'Jane Austen', description: 'Artist stage name' })
   @IsString()
@@ -38,10 +49,10 @@ export class RegisterDto {
   @IsOptional()
   dob?: string;
 
-  @ApiPropertyOptional({ example: 'Female', enum: ['Male', 'Female', 'Other', 'Prefer not to say'], description: 'Gender identity' })
+  @ApiProperty({ example: 'Female', enum: ['Male', 'Female', 'Other', 'Prefer not to say'], description: 'Gender identity' })
   @IsString()
-  @IsOptional()
-  gender?: string;
+  @IsNotEmpty()
+  gender: string;
 
   @ApiPropertyOptional({ example: 'India', description: 'Country location' })
   @IsString()

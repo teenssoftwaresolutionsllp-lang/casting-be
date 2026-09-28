@@ -3,6 +3,17 @@ import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UserService {
+  private readonly profileFields = [
+    'username', 'email', 'mobile', 'gender', 'age', 'fullName', 'stageName',
+    'country', 'state', 'city', 'profilePhoto', 'category', 'experience',
+    'skills', 'languages', 'preferredLanguage', 'qualification', 'institute',
+    'occupation', 'availableFor', 'union', 'relocate', 'height', 'weight',
+    'bodyType', 'skinTone', 'hairColor', 'eyeColor', 'preferredRole',
+    'travelAvailability', 'nightShoots', 'headshot', 'fullBody', 'introVideo',
+    'previousWork', 'instagram', 'youtube', 'imdb', 'website', 'resume',
+    'awards', 'bio',
+  ] as const;
+
   constructor(private readonly userRepository: UserRepository) {}
 
   async findById(id: string) {
@@ -23,6 +34,25 @@ export class UserService {
     delete updateData.email;
     delete updateData.id;
     return this.userRepository.update(id, updateData);
+  }
+
+  async getProfileCompletion(id: string) {
+    const user = await this.findById(id);
+    const completedFields = this.profileFields.filter((field) => {
+      const value = user[field];
+      return value !== null && value !== undefined && value !== '' &&
+        (!Array.isArray(value) || value.length > 0);
+    });
+    const totalFields = this.profileFields.length;
+    const completed = completedFields.length;
+
+    return {
+      percentage: Math.round((completed / totalFields) * 100),
+      completed,
+      total: totalFields,
+      completedFields,
+      remainingFields: this.profileFields.filter((field) => !completedFields.includes(field)),
+    };
   }
 
   async getPublicProfile(currentUserId: string, targetUserId: string) {

@@ -34,6 +34,13 @@ export class UserController {
     return this.userService.updateProfile(user.sub, updateData);
   }
 
+  @Get('profile/me/completion')
+  @ApiOperation({ summary: 'Get the current profile completion percentage' })
+  @ApiResponse({ status: 200, description: 'Profile completion calculated successfully.' })
+  async getProfileCompletion(@CurrentUser() user: any) {
+    return this.userService.getProfileCompletion(user.sub);
+  }
+
   @Get('users/explore')
   @ApiOperation({ summary: 'Search and browse casting artists and talent' })
   @ApiQuery({ name: 'query', required: false, description: 'Filter creators by name' })

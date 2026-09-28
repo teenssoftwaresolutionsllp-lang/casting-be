@@ -22,6 +22,11 @@ export class AuthService {
       throw new BadRequestException('A user with this email address already exists.');
     }
 
+    const existingUsername = await this.userRepository.findByUsername(dto.username);
+    if (existingUsername) {
+      throw new BadRequestException('A user with this username already exists.');
+    }
+
     if (dto.mobile) {
       const existingMobile = await this.userRepository.findByMobile(dto.mobile);
       if (existingMobile) {
@@ -33,11 +38,13 @@ export class AuthService {
     
     // Construct user DB record
     const user = await this.userRepository.create({
+      username: dto.username,
       email: dto.email,
       password: hashedPassword,
-      fullName: dto.fullName,
+      fullName: dto.fullName || dto.username,
       role: dto.role,
       mobile: dto.mobile,
+      age: dto.age,
       stageName: dto.stageName,
       dob: dto.dob,
       gender: dto.gender,
@@ -90,8 +97,12 @@ export class AuthService {
       token,
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         fullName: user.fullName,
+        mobile: user.mobile,
+        age: user.age,
+        gender: user.gender,
         role: user.role,
         profilePhoto: user.profilePhoto,
       },
@@ -115,8 +126,12 @@ export class AuthService {
       token,
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         fullName: user.fullName,
+        mobile: user.mobile,
+        age: user.age,
+        gender: user.gender,
         role: user.role,
         profilePhoto: user.profilePhoto,
       },
@@ -150,8 +165,12 @@ export class AuthService {
       token,
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         fullName: user.fullName,
+        mobile: user.mobile,
+        age: user.age,
+        gender: user.gender,
         role: user.role,
         profilePhoto: user.profilePhoto,
       },
