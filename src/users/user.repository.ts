@@ -52,6 +52,37 @@ export class UserRepository {
     return results[0] || null;
   }
 
+  async findByTrkCode(trkCode: string) {
+    const results = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.trkCode, trkCode))
+      .limit(1);
+    return results[0] || null;
+  }
+
+  async generateTrkCode(): Promise<string> {
+    const yearSuffix = new Date().getFullYear().toString().slice(-2); // '26'
+    const prefix = `TRK${yearSuffix}`;
+
+    const [latest] = await this.db
+      .select({ trkCode: schema.users.trkCode })
+      .from(schema.users)
+      .where(sql`${schema.users.trkCode} LIKE ${prefix + '%'}`)
+      .orderBy(sql`${schema.users.trkCode} DESC`)
+      .limit(1);
+
+    let nextSeq = 1;
+    if (latest?.trkCode) {
+      const numPart = parseInt(latest.trkCode.slice(prefix.length), 10);
+      if (!isNaN(numPart)) {
+        nextSeq = numPart + 1;
+      }
+    }
+
+    return `${prefix}${nextSeq.toString().padStart(4, '0')}`;
+  }
+
   async update(id: string, updateData: Partial<typeof schema.users.$inferInsert>) {
     const [updated] = await this.db
       .update(schema.users)

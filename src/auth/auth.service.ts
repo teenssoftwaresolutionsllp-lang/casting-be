@@ -35,6 +35,9 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    // Generate unique TRK code (e.g., TRK260001)
+    const trkCode = await this.userRepository.generateTrkCode();
     
     // Construct user DB record
     const user = await this.userRepository.create({
@@ -52,6 +55,7 @@ export class AuthService {
       state: dto.state,
       city: dto.city,
       profilePhoto: dto.profilePhoto,
+      trkCode,
       
       // Artist-specific specs
       category: dto.category,
@@ -105,19 +109,34 @@ export class AuthService {
         gender: user.gender,
         role: user.role,
         profilePhoto: user.profilePhoto,
+        trkCode: user.trkCode,
       },
     };
   }
 
   async login(dto: LoginDto) {
-    const user = await this.userRepository.findByEmail(dto.email);
-    if (!user) {
-      throw new UnauthorizedException('Invalid email or password.');
+    const { identifier, password } = dto;
+    let user: any = null;
+
+    // Determine the identifier type and find the user
+    if (identifier.includes('@')) {
+      // Looks like an email
+      user = await this.userRepository.findByEmail(identifier);
+    } else if (identifier.toUpperCase().startsWith('TRK')) {
+      // Looks like a TRK code
+      user = await this.userRepository.findByTrkCode(identifier.toUpperCase());
+    } else {
+      // Treat as mobile number
+      user = await this.userRepository.findByMobile(identifier);
     }
 
-    const passwordMatch = await bcrypt.compare(dto.password, user.password);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials. No account found with the provided identifier.');
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException('Invalid credentials. Password does not match.');
     }
 
     const token = await this.generateToken(user.id, user.email || '', user.role);
@@ -134,6 +153,7 @@ export class AuthService {
         gender: user.gender,
         role: user.role,
         profilePhoto: user.profilePhoto,
+        trkCode: user.trkCode,
       },
     };
   }
@@ -148,7 +168,8 @@ export class AuthService {
     let user = await this.userRepository.findByEmail(email);
 
     if (!user) {
-      // If user doesn't exist, create basic user with default artist role
+      // Generate TRK code for new Google users too
+      const trkCode = await this.userRepository.generateTrkCode();
       const randomPassword = await bcrypt.hash(crypto.randomUUID(), 10);
       user = await this.userRepository.create({
         email,
@@ -156,6 +177,7 @@ export class AuthService {
         fullName: decoded.name || email.split('@')[0] || 'Google User',
         profilePhoto: decoded.picture || null,
         role: 'artist',
+        trkCode,
       });
     }
 
@@ -173,6 +195,7 @@ export class AuthService {
         gender: user.gender,
         role: user.role,
         profilePhoto: user.profilePhoto,
+        trkCode: user.trkCode,
       },
       message: 'Google login successful',
     };

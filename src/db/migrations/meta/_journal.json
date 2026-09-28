@@ -8,6 +8,13 @@
       "when": 1790574835900,
       "tag": "0000_lame_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790592522827,
+      "tag": "0001_pink_lester",
+      "breakpoints": true
     }
   ]
 }

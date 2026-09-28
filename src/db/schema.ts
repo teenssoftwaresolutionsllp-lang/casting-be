@@ -57,6 +57,7 @@ export const users = pgTable('users', {
   resume: text('resume'),
   awards: text('awards'),
   bio: text('bio'),
+  trkCode: text('trk_code').unique(), // Auto-generated: TRK260001, TRK260002...
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -229,6 +230,39 @@ export const notifications = pgTable('notifications', {
 });
 
 // ==========================================
+// ACTIVITY LOGS TABLE (Audit Trail)
+// ==========================================
+export const activityLogs = pgTable('activity_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  action: text('action').notNull(), // 'REGISTER', 'LOGIN', 'PROFILE_UPDATE', 'VIDEO_UPLOAD', 'AUDITION_CREATE', 'APPLICATION_SUBMIT', 'FOLLOW', 'UNFOLLOW', 'STORY_CREATE', 'COMMENT', 'LIKE', 'REPORT', 'ADMIN_LOGIN', 'PASSWORD_CHANGE'
+  entity: text('entity'), // 'user', 'video', 'audition', 'application', 'story', 'comment'
+  entityId: text('entity_id'), // ID of the related entity
+  details: jsonb('details').$type<Record<string, any>>(), // Additional context data
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('activity_logs_user_id_idx').on(table.userId),
+  index('activity_logs_action_idx').on(table.action),
+  index('activity_logs_created_at_idx').on(table.createdAt),
+]);
+
+// ==========================================
+// ADMIN USERS TABLE (Separate admin credentials)
+// ==========================================
+export const adminUsers = pgTable('admin_users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: text('email').unique().notNull(),
+  password: text('password').notNull(),
+  fullName: text('full_name').notNull(),
+  role: text('role').default('admin').notNull(), // 'admin' | 'super_admin'
+  isActive: boolean('is_active').default(true).notNull(),
+  lastLoginAt: timestamp('last_login_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ==========================================
 // RELATIONS DEFINITIONS (For ease of querying in ORM if needed)
 // ==========================================
 export const usersRelations = relations(users, ({ many }) => ({
@@ -241,6 +275,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   notifications: many(notifications),
   chatParticipants: many(chatParticipants),
   messages: many(messages),
+  activityLogs: many(activityLogs),
 }));
 
 export const videosRelations = relations(videos, ({ one, many }) => ({
@@ -292,4 +327,8 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, { fields: [notifications.userId], references: [users.id] }),
+}));
+
+export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
+  user: one(users, { fields: [activityLogs.userId], references: [users.id] }),
 }));
