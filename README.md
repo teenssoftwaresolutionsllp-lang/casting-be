@@ -366,3 +366,5 @@ To upload, send `multipart/form-data` with a `file` field. The feed excludes exp
 | `seed:admin` | `ts-node src/db/seed-admin.ts` | Create default admin user |
 | `test` | `jest` | Run unit tests |
 | `lint` | `eslint --fix` | Lint and auto-fix |
+
+RESEND_API_KEY=your_resend_api_key
