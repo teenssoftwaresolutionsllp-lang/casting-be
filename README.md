@@ -46,6 +46,8 @@ npm run generate
 npm run migrate
 ```
 
+Run migrations after pulling schema changes and before starting the API. The stories endpoints require migrations `0002_plain_roland_deschain` and `0003_exotic_zeigeist`; without them, PostgreSQL reports `relation "stories" does not exist`.
+
 ## Running the app
 
 ```bash
@@ -70,6 +72,19 @@ From the Swagger UI, you can:
 - Authenticate via the "Authorize" button by passing a valid JWT token.
 - Test endpoints directly within the browser.
 
+## Stories API
+
+All story endpoints require a JWT bearer token. Stories accept image or video uploads through Cloudinary and remain active for 24 hours.
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/stories` | Upload a multipart `file` image or video and create a story. |
+| `GET` | `/stories/feed?limit=20&offset=0` | Get active stories grouped by account, including per-story viewed status. `limit` is capped at 50. |
+| `POST` | `/stories/:id/views` | Mark an active story as viewed. Repeated requests are safe. |
+| `DELETE` | `/stories/:id` | Delete a story owned by the authenticated account. |
+
+To upload, send `multipart/form-data` with a `file` field. The feed excludes expired stories; pagination is by account, so a creator's active stories are returned together.
+
 ## Architecture
 
 - **Auth**: JWT generation and Passport verification, Role-based decorators.
@@ -80,8 +95,5 @@ From the Swagger UI, you can:
 - **Chat**: 1:1 real-time messaging structures.
 - **Notifications**: Internal alert tracking.
 - **Media**: Cloudinary integration for scalable assets.
-
-
-
-Neon - url : postgresql://neondb_owner:npg_0xDaP1AoKMCS@ep-square-lake-a51ed5rm-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+- **Stories**: 24-hour image/video stories, grouped feeds, view tracking, and owner-only deletion.
 

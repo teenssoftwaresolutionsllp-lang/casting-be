@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, boolean, timestamp, primaryKey, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, integer, boolean, timestamp, primaryKey, jsonb, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // ==========================================
@@ -59,6 +59,29 @@ export const users = pgTable('users', {
   bio: text('bio'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// ==========================================
+// STORIES (24-hour media posts)
+// ==========================================
+export const stories = pgTable('stories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  mediaUrl: text('media_url').notNull(),
+  mediaType: text('media_type').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('stories_expires_at_idx').on(table.expiresAt),
+  index('stories_creator_created_at_idx').on(table.creatorId, table.createdAt),
+]);
+
+export const storyViews = pgTable('story_views', {
+  storyId: uuid('story_id').references(() => stories.id, { onDelete: 'cascade' }).notNull(),
+  viewerId: uuid('viewer_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  viewedAt: timestamp('viewed_at').defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.storyId, table.viewerId] }),
+]);
 
 // ==========================================
 // FOLLOWS RELATIONSHIP TABLE (Self-referencing Many-to-Many)
