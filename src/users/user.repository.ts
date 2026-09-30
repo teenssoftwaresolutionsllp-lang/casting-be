@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, or, ilike, sql } from 'drizzle-orm';
+import { eq, and, gt, ilike, sql } from 'drizzle-orm';
 import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 
@@ -90,6 +90,44 @@ export class UserRepository {
       .where(eq(schema.users.id, id))
       .returning();
     return updated;
+  }
+
+  async setPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date) {
+    await this.db
+      .update(schema.users)
+      .set({ passwordResetTokenHash: tokenHash, passwordResetExpiresAt: expiresAt })
+      .where(eq(schema.users.id, userId));
+  }
+
+  async clearPasswordResetToken(userId: string, tokenHash: string) {
+    await this.db
+      .update(schema.users)
+      .set({ passwordResetTokenHash: null, passwordResetExpiresAt: null })
+      .where(
+        and(
+          eq(schema.users.id, userId),
+          eq(schema.users.passwordResetTokenHash, tokenHash),
+        ),
+      );
+  }
+
+  async resetPasswordWithToken(tokenHash: string, password: string): Promise<boolean> {
+    const [updated] = await this.db
+      .update(schema.users)
+      .set({
+        password,
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
+      })
+      .where(
+        and(
+          eq(schema.users.passwordResetTokenHash, tokenHash),
+          gt(schema.users.passwordResetExpiresAt, new Date()),
+        ),
+      )
+      .returning({ id: schema.users.id });
+
+    return Boolean(updated);
   }
 
   async exploreTalent(queryName?: string, category?: string) {

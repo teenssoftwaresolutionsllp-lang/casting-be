@@ -361,3 +361,37 @@ npm start
 - [ ] GET /admin/activity-logs → all logs
 - [ ] GET /admin/activity-logs?action=LOGIN → filtered logs
 - [ ] Google login for new user → TRK code generated
+
+### Password Reset (Swagger)
+
+For local Swagger testing without a frontend or email provider, set these variables in `.env`:
+
+```env
+NODE_ENV=development
+PASSWORD_RESET_DEV_MODE=true
+```
+
+Restart the backend, then open `http://localhost:3000/api/docs`.
+
+1. Expand `POST /auth/forgot-password` and select **Try it out**.
+2. Submit the email address of an existing user:
+
+   ```json
+   {
+     "email": "user@example.com"
+   }
+   ```
+
+3. Copy `resetToken` from the response. For an unknown email, the endpoint returns the generic message without a token.
+4. Expand `POST /auth/reset-password` and submit the copied token with a new password:
+
+   ```json
+   {
+     "token": "<resetToken from the previous response>",
+     "password": "NewPassword123!"
+   }
+   ```
+
+5. Expect `200` with `Password successfully reset.` Try logging in with the new password to verify it. The reset token expires after 30 minutes and can be used only once.
+
+`resetToken` is returned only when both variables above are set as shown. Do not enable this mode in production; production resets should use the configured Resend email flow.

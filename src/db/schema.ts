@@ -10,6 +10,8 @@ export const users = pgTable('users', {
   email: text('email').unique(),
   mobile: text('mobile').unique(),
   password: text('password').notNull(),
+  passwordResetTokenHash: text('password_reset_token_hash'),
+  passwordResetExpiresAt: timestamp('password_reset_expires_at'),
   fullName: text('full_name').notNull(),
   age: integer('age'),
   stageName: text('stage_name'),

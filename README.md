@@ -25,6 +25,11 @@ JWT_SECRET="supersecretjwtkeyforcastingapp2026"
 CLOUDINARY_CLOUD_NAME=""
 CLOUDINARY_API_KEY=""
 CLOUDINARY_API_SECRET=""
+
+# Password reset email (Resend)
+RESEND_API_KEY="re_..."
+RESEND_FROM_EMAIL="Casting <no-reply@your-verified-domain.com>"
+FRONTEND_URL="https://your-frontend.example.com"
 ```
 
 ## Installation
@@ -157,6 +162,24 @@ Accepts **three login methods** via a single `identifier` field:
 ### Google Login — `POST /auth/google`
 
 Firebase Google ID token authentication. Auto-creates user with TRK code if new.
+
+### Forgot Password — `POST /auth/forgot-password`
+
+Sends a single-use password reset link when an account exists for the submitted email. Configure `RESEND_API_KEY`, a verified `RESEND_FROM_EMAIL`, and `FRONTEND_URL` first. The reset token expires after 30 minutes.
+
+For local Swagger testing before a frontend or email provider is available, set `NODE_ENV=development` and `PASSWORD_RESET_DEV_MODE=true`. The endpoint returns `resetToken` only in this mode; use it in `POST /auth/reset-password`. Do not enable this mode in production.
+
+```json
+{ "email": "jane@example.com" }
+```
+
+### Reset Password — `POST /auth/reset-password`
+
+Accepts the token from the email link and the new password.
+
+```json
+{ "token": "token-from-reset-link", "password": "NewPassword123!" }
+```
 
 ---
 
@@ -367,4 +390,7 @@ To upload, send `multipart/form-data` with a `file` field. The feed excludes exp
 | `test` | `jest` | Run unit tests |
 | `lint` | `eslint --fix` | Lint and auto-fix |
 
+
+NODE_ENV=development
+PASSWORD_RESET_DEV_MODE=true
 RESEND_API_KEY=your_resend_api_key

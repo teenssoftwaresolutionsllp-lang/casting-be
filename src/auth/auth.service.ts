@@ -1,9 +1,16 @@
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserRepository } from '../users/user.repository';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { FirebaseService } from './firebase.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -199,6 +206,77 @@ export class AuthService {
       },
       message: 'Google login successful',
     };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const message = 'If an account exists for that email, a password reset link has been sent.';
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL;
+    const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, '');
+    const devMode =
+      process.env.PASSWORD_RESET_DEV_MODE === 'true' &&
+      process.env.NODE_ENV === 'development';
+    if (!devMode && (!apiKey || !fromEmail || !frontendUrl)) {
+      throw new ServiceUnavailableException('Password reset email is not configured.');
+    }
+
+    const user = await this.userRepository.findByEmail(dto.email);
+    if (!user) {
+      return { message };
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    await this.userRepository.setPasswordResetToken(
+      user.id,
+      tokenHash,
+      new Date(Date.now() + 30 * 60 * 1000),
+    );
+
+    if (devMode) {
+      return { message, resetToken: token };
+    }
+
+    try {
+      const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [user.email || dto.email],
+          subject: 'Reset your Casting account password',
+          text: `Use this link to reset your password. It expires in 30 minutes:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Resend returned HTTP ${response.status}`);
+      }
+    } catch {
+      await this.userRepository.clearPasswordResetToken(user.id, tokenHash);
+      throw new ServiceUnavailableException('Unable to send the password reset email.');
+    }
+
+    return { message };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    if (typeof dto.token !== 'string' || !dto.token) {
+      throw new BadRequestException('A password reset token is required.');
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(dto.token).digest('hex');
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const updated = await this.userRepository.resetPasswordWithToken(tokenHash, hashedPassword);
+    if (!updated) {
+      throw new BadRequestException('The password reset token is invalid or expired.');
+    }
+
+    return { message: 'Password successfully reset.' };
   }
 
   private async generateToken(userId: string, email: string, role: string): Promise<string> {
