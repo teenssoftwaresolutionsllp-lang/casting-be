@@ -3,6 +3,8 @@ import { UserRepository } from './user.repository';
 
 @Injectable()
 export class UserService {
+  private readonly defaultProfilePic = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
+
   private readonly profileFields = [
     'username', 'email', 'mobile', 'gender', 'age', 'fullName', 'stageName',
     'country', 'state', 'city', 'profilePhoto', 'category', 'experience',
@@ -57,10 +59,13 @@ export class UserService {
 
   async getPublicProfile(currentUserId: string, targetUserId: string) {
     const user = await this.findById(targetUserId);
-    const followers = await this.userRepository.getFollowersCount(targetUserId);
-    const following = await this.userRepository.getFollowingCount(targetUserId);
-    const videosCount = await this.userRepository.getVideosCount(targetUserId);
-    const isFollowing = await this.userRepository.isFollowing(currentUserId, targetUserId);
+
+    const [followers, following, videosCount, isFollowing] = await Promise.all([
+      this.userRepository.getFollowersCount(targetUserId),
+      this.userRepository.getFollowingCount(targetUserId),
+      this.userRepository.getVideosCount(targetUserId),
+      this.userRepository.isFollowing(currentUserId, targetUserId),
+    ]);
 
     return {
       id: user.id,
@@ -68,7 +73,7 @@ export class UserService {
       stageName: user.stageName,
       category: user.category,
       bio: user.bio,
-      pic: user.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      pic: user.profilePhoto || this.defaultProfilePic,
       followers: this.formatCount(followers),
       followingCount: this.formatCount(following),
       videosCount,
@@ -103,7 +108,7 @@ export class UserService {
         name: creator.fullName,
         category: creator.category || 'Actor',
         bio: creator.bio || 'Talent Casting artist.',
-        pic: creator.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+        pic: creator.profilePhoto || this.defaultProfilePic,
         followers: this.formatCount(followers),
         videosCount,
         handle: creator.stageName

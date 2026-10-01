@@ -5,6 +5,8 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 
 @Injectable()
 export class VideoService {
+  private readonly defaultProfilePic = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
+
   constructor(private readonly videoRepository: VideoRepository) {}
 
   async createVideo(creatorId: string, dto: CreateVideoDto) {
@@ -35,7 +37,7 @@ export class VideoService {
       category: v.category,
       creatorId: v.creatorId,
       creatorName: v.creatorName || 'Anonymous',
-      creatorPic: v.creatorPic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      creatorPic: v.creatorPic || this.defaultProfilePic,
       creatorCategory: v.creatorCategory || 'Actor',
       title: v.title,
       desc: v.desc,
@@ -59,7 +61,7 @@ export class VideoService {
       category: v.category,
       creatorId: v.creatorId,
       creatorName: v.creatorName || 'Anonymous',
-      creatorPic: v.creatorPic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      creatorPic: v.creatorPic || this.defaultProfilePic,
       creatorCategory: v.creatorCategory || 'Actor',
       title: v.title,
       desc: v.desc,
@@ -119,7 +121,7 @@ export class VideoService {
       likes: c.likesCount,
       time: 'Just now',
       author: c.author || 'Anonymous',
-      authorPic: c.authorPic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      authorPic: c.authorPic || this.defaultProfilePic,
       liked: !!likedCommentMap[c.id],
       createdAt: c.createdAt,
     }));
