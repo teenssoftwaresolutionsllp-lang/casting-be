@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 
@@ -91,6 +91,25 @@ export class VideoRepository {
     return results.length > 0;
   }
 
+  async getLikedVideoIdsByUser(userId: string, videoIds: string[]): Promise<Record<string, boolean>> {
+    if (!videoIds.length) return {};
+
+    const rows = await this.db
+      .select({ videoId: schema.videoLikes.videoId })
+      .from(schema.videoLikes)
+      .where(
+        and(
+          eq(schema.videoLikes.userId, userId),
+          inArray(schema.videoLikes.videoId, videoIds),
+        ),
+      );
+
+    return rows.reduce((acc, row) => {
+      acc[row.videoId as string] = true;
+      return acc;
+    }, {} as Record<string, boolean>);
+  }
+
   async addLike(videoId: string, userId: string) {
     await this.db.insert(schema.videoLikes).values({ videoId, userId });
     await this.db
@@ -163,6 +182,25 @@ export class VideoRepository {
       )
       .limit(1);
     return results.length > 0;
+  }
+
+  async getLikedCommentIdsByUser(userId: string, commentIds: string[]): Promise<Record<string, boolean>> {
+    if (!commentIds.length) return {};
+
+    const rows = await this.db
+      .select({ commentId: schema.commentLikes.commentId })
+      .from(schema.commentLikes)
+      .where(
+        and(
+          eq(schema.commentLikes.userId, userId),
+          inArray(schema.commentLikes.commentId, commentIds),
+        ),
+      );
+
+    return rows.reduce((acc, row) => {
+      acc[row.commentId as string] = true;
+      return acc;
+    }, {} as Record<string, boolean>);
   }
 
   async addCommentLike(commentId: string, userId: string) {

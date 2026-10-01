@@ -80,28 +80,38 @@ export class UserService {
 
   async exploreCreators(currentUserId: string, query?: string, category?: string) {
     const creators = await this.userRepository.exploreTalent(query, category);
-    
-    return Promise.all(
-      creators.map(async (creator) => {
-        const followers = await this.userRepository.getFollowersCount(creator.id);
-        const following = await this.userRepository.isFollowing(currentUserId, creator.id);
-        const videosCount = await this.userRepository.getVideosCount(creator.id);
-        
-        return {
-          id: creator.id,
-          name: creator.fullName,
-          category: creator.category || 'Actor',
-          bio: creator.bio || 'Talent Casting artist.',
-          pic: creator.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-          followers: this.formatCount(followers),
-          videosCount,
-          handle: creator.stageName 
-            ? `@${creator.stageName.toLowerCase().replace(/\s+/g, '')}` 
-            : `@user${creator.id.substring(0, 5)}`,
-          following,
-        };
-      }),
-    );
+
+    if (!creators.length) {
+      return [];
+    }
+
+    const creatorIds = creators.map((creator) => creator.id);
+
+    const [followersMap, followingMap, videosMap] = await Promise.all([
+      this.userRepository.getFollowersCountByUserIds(creatorIds),
+      this.userRepository.getFollowStatusMap(currentUserId, creatorIds),
+      this.userRepository.getVideosCountByUserIds(creatorIds),
+    ]);
+
+    return creators.map((creator) => {
+      const followers = followersMap[creator.id] ?? 0;
+      const following = !!followingMap[creator.id];
+      const videosCount = videosMap[creator.id] ?? 0;
+
+      return {
+        id: creator.id,
+        name: creator.fullName,
+        category: creator.category || 'Actor',
+        bio: creator.bio || 'Talent Casting artist.',
+        pic: creator.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+        followers: this.formatCount(followers),
+        videosCount,
+        handle: creator.stageName
+          ? `@${creator.stageName.toLowerCase().replace(/\s+/g, '')}`
+          : `@user${creator.id.substring(0, 5)}`,
+        following,
+      };
+    });
   }
 
   async toggleFollow(followerId: string, followingId: string) {

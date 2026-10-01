@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, gt, ilike, sql } from 'drizzle-orm';
+import { eq, and, gt, ilike, sql, inArray } from 'drizzle-orm';
 import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 
@@ -194,6 +194,24 @@ export class UserRepository {
     return result?.count || 0;
   }
 
+  async getFollowersCountByUserIds(userIds: string[]): Promise<Record<string, number>> {
+    if (!userIds.length) return {};
+
+    const results = await this.db
+      .select({
+        userId: schema.follows.followingId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.follows)
+      .where(inArray(schema.follows.followingId, userIds))
+      .groupBy(schema.follows.followingId);
+
+    return results.reduce((acc, row) => {
+      acc[row.userId as string] = Number(row.count);
+      return acc;
+    }, {} as Record<string, number>);
+  }
+
   async getFollowingCount(userId: string): Promise<number> {
     const [result] = await this.db
       .select({ count: sql<number>`count(*)::int` })
@@ -202,11 +220,50 @@ export class UserRepository {
     return result?.count || 0;
   }
 
+  async getFollowStatusMap(currentUserId: string, targetUserIds: string[]): Promise<Record<string, boolean>> {
+    if (!targetUserIds.length) return {};
+
+    const rows = await this.db
+      .select({
+        followingId: schema.follows.followingId,
+      })
+      .from(schema.follows)
+      .where(
+        and(
+          eq(schema.follows.followerId, currentUserId),
+          inArray(schema.follows.followingId, targetUserIds),
+        ),
+      );
+
+    return rows.reduce((acc, row) => {
+      acc[row.followingId as string] = true;
+      return acc;
+    }, {} as Record<string, boolean>);
+  }
+
   async getVideosCount(userId: string): Promise<number> {
     const [result] = await this.db
       .select({ count: sql<number>`count(*)::int` })
       .from(schema.videos)
       .where(eq(schema.videos.creatorId, userId));
     return result?.count || 0;
+  }
+
+  async getVideosCountByUserIds(userIds: string[]): Promise<Record<string, number>> {
+    if (!userIds.length) return {};
+
+    const results = await this.db
+      .select({
+        creatorId: schema.videos.creatorId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.videos)
+      .where(inArray(schema.videos.creatorId, userIds))
+      .groupBy(schema.videos.creatorId);
+
+    return results.reduce((acc, row) => {
+      acc[row.creatorId as string] = Number(row.count);
+      return acc;
+    }, {} as Record<string, number>);
   }
 }

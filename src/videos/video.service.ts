@@ -20,29 +20,32 @@ export class VideoService {
 
   async findAll(userId: string, category?: string) {
     const list = await this.videoRepository.findAll(category);
-    
-    // map "liked" boolean state for the current requesting user
-    return Promise.all(
-      list.map(async (v) => {
-        const liked = await this.videoRepository.hasLiked(v.id, userId);
-        return {
-          id: v.id,
-          category: v.category,
-          creatorId: v.creatorId,
-          creatorName: v.creatorName || 'Anonymous',
-          creatorPic: v.creatorPic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-          creatorCategory: v.creatorCategory || 'Actor',
-          title: v.title,
-          desc: v.desc,
-          url: v.url,
-          thumb: v.thumb,
-          likesCount: v.likesCount,
-          viewsCount: v.viewsCount,
-          liked,
-          createdAt: v.createdAt,
-        };
-      }),
+
+    if (!list.length) {
+      return [];
+    }
+
+    const likedMap = await this.videoRepository.getLikedVideoIdsByUser(
+      userId,
+      list.map((v) => v.id),
     );
+
+    return list.map((v) => ({
+      id: v.id,
+      category: v.category,
+      creatorId: v.creatorId,
+      creatorName: v.creatorName || 'Anonymous',
+      creatorPic: v.creatorPic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      creatorCategory: v.creatorCategory || 'Actor',
+      title: v.title,
+      desc: v.desc,
+      url: v.url,
+      thumb: v.thumb,
+      likesCount: v.likesCount,
+      viewsCount: v.viewsCount,
+      liked: !!likedMap[v.id],
+      createdAt: v.createdAt,
+    }));
   }
 
   async findOne(id: string, userId: string) {
@@ -98,24 +101,28 @@ export class VideoService {
   // Comments business logic
   async getComments(videoId: string, userId: string) {
     const commentsList = await this.videoRepository.getComments(videoId);
-    
-    return Promise.all(
-      commentsList.map(async (c) => {
-        const liked = await this.videoRepository.hasLikedComment(c.id, userId);
-        return {
-          id: c.id,
-          videoId: c.videoId,
-          userId: c.userId,
-          text: c.text,
-          likes: c.likesCount,
-          time: 'Just now', // for seed simplicity
-          author: c.author || 'Anonymous',
-          authorPic: c.authorPic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-          liked,
-          createdAt: c.createdAt,
-        };
-      }),
+
+    if (!commentsList.length) {
+      return [];
+    }
+
+    const likedCommentMap = await this.videoRepository.getLikedCommentIdsByUser(
+      userId,
+      commentsList.map((c) => c.id),
     );
+
+    return commentsList.map((c) => ({
+      id: c.id,
+      videoId: c.videoId,
+      userId: c.userId,
+      text: c.text,
+      likes: c.likesCount,
+      time: 'Just now',
+      author: c.author || 'Anonymous',
+      authorPic: c.authorPic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+      liked: !!likedCommentMap[c.id],
+      createdAt: c.createdAt,
+    }));
   }
 
   async postComment(videoId: string, userId: string, dto: CreateCommentDto) {

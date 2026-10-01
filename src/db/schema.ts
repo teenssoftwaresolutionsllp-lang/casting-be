@@ -92,13 +92,13 @@ export const storyViews = pgTable('story_views', {
 export const follows = pgTable('follows', {
   followerId: uuid('follower_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   followingId: uuid('following_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-}, (table) => {
-  return [
-    {
-      pk: primaryKey({ columns: [table.followerId, table.followingId] }),
-    }
-  ];
-});
+}, (table) => [
+  {
+    pk: primaryKey({ columns: [table.followerId, table.followingId] }),
+  },
+  index('follows_follower_id_idx').on(table.followerId),
+  index('follows_following_id_idx').on(table.followingId),
+]);
 
 // ==========================================
 // VIDEOS TABLE
@@ -122,13 +122,13 @@ export const videos = pgTable('videos', {
 export const videoLikes = pgTable('video_likes', {
   videoId: uuid('video_id').references(() => videos.id, { onDelete: 'cascade' }).notNull(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-}, (table) => {
-  return [
-    {
-      pk: primaryKey({ columns: [table.videoId, table.userId] }),
-    }
-  ];
-});
+}, (table) => [
+  {
+    pk: primaryKey({ columns: [table.videoId, table.userId] }),
+  },
+  index('video_likes_user_id_idx').on(table.userId),
+  index('video_likes_video_id_idx').on(table.videoId),
+]);
 
 // ==========================================
 // COMMENTS TABLE
@@ -148,13 +148,13 @@ export const comments = pgTable('comments', {
 export const commentLikes = pgTable('comment_likes', {
   commentId: uuid('comment_id').references(() => comments.id, { onDelete: 'cascade' }).notNull(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-}, (table) => {
-  return [
-    {
-      pk: primaryKey({ columns: [table.commentId, table.userId] }),
-    }
-  ];
-});
+}, (table) => [
+  {
+    pk: primaryKey({ columns: [table.commentId, table.userId] }),
+  },
+  index('comment_likes_user_id_idx').on(table.userId),
+  index('comment_likes_comment_id_idx').on(table.commentId),
+]);
 
 // ==========================================
 // AUDITIONS TABLE (Casting Calls)
