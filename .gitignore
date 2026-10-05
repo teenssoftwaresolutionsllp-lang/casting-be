@@ -61,3 +61,5 @@ firebase-adminsdk-*.json
 *-firebase-adminsdk-*.json
 
 *.json
+.vercel
+.env*
