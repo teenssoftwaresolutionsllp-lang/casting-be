@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1790574835900,
-      "tag": "0000_lame_thunderbird",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1790592522827,
-      "tag": "0001_pink_lester",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1790664662658,
-      "tag": "0002_reset_password",
+      "when": 1790848963098,
+      "tag": "0000_marvelous_the_leader",
       "breakpoints": true
     }
   ]
