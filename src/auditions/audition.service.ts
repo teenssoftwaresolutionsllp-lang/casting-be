@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { AuditionRepository } from './audition.repository';
 import { ApplicationRepository } from '../applications/application.repository';
 import { CreateAuditionDto } from './dto/create-audition.dto';
@@ -79,5 +79,21 @@ export class AuditionService {
       applicationDetails: app ? app.details : null,
       applicants, // empty array if not creator
     };
+  }
+
+  async deleteAudition(id: string, userId: string, isAdmin = false) {
+    const audition = await this.auditionRepository.findById(id);
+    if (!audition) {
+      throw new NotFoundException(`Audition with ID ${id} not found.`);
+    }
+    if (audition.creatorId !== userId && !isAdmin) {
+      throw new ForbiddenException('Only the audition creator or an admin can delete it.');
+    }
+
+    const deleted = await this.auditionRepository.deleteById(id);
+    if (!deleted) {
+      throw new NotFoundException(`Audition with ID ${id} not found.`);
+    }
+    return { deleted: true };
   }
 }

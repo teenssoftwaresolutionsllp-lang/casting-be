@@ -1,6 +1,9 @@
 import {
   Controller,
+  Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Post,
   Body,
   Param,
@@ -47,5 +50,14 @@ export class AuditionController {
   @ApiResponse({ status: 200, description: 'Audition details. Includes applicant lists if called by publisher.' })
   async findOne(@CurrentUser() user: any, @Param('id') id: string) {
     return this.auditionService.findOne(id, user.sub);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete an audition created by the current user or an admin' })
+  @ApiResponse({ status: 200, description: 'Audition deleted successfully.' })
+  @ApiResponse({ status: 403, description: 'Only the audition creator or an admin can delete it.' })
+  async delete(@CurrentUser() user: any, @Param('id') id: string) {
+    return this.auditionService.deleteAudition(id, user.sub, user.isAdmin === true);
   }
 }

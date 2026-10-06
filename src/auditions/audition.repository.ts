@@ -16,6 +16,14 @@ export class AuditionRepository {
     return created;
   }
 
+  async deleteById(id: string) {
+    const [deleted] = await this.db
+      .delete(schema.auditions)
+      .where(eq(schema.auditions.id, id))
+      .returning({ id: schema.auditions.id });
+    return deleted || null;
+  }
+
   async findById(id: string) {
     const results = await this.db
       .select({
