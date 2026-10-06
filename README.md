@@ -52,7 +52,12 @@ npm run migrate
 
 # Seed the default admin user (first time only)
 npm run seed:admin
+
+# Reset app data and load the 12-member demo dataset
+npm run seed
 ```
+
+The demo seed replaces existing app data (users, posts, stories, auditions, applications, chats, and related rows) but leaves admin accounts intact. Demo member accounts use the password `password123`; the primary login is `seeduser@example.com`.
 
 Run migrations after pulling schema changes and before starting the API. The stories endpoints require migrations `0002_plain_roland_deschain` and `0003_exotic_zeigeist`; without them, PostgreSQL reports `relation "stories" does not exist`.
 
