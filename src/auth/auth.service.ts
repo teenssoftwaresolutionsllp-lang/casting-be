@@ -212,11 +212,11 @@ export class AuthService {
     const message = 'If an account exists for that email, a password reset link has been sent.';
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL;
-    const frontendUrl = process.env.FRONTEND_URL?.replace(/\/+$/, '');
+    const publicBaseUrl = (process.env.BACKEND_URL || process.env.FRONTEND_URL)?.replace(/\/+$/, '');
     const devMode =
       process.env.PASSWORD_RESET_DEV_MODE === 'true' &&
       process.env.NODE_ENV === 'development';
-    if (!devMode && (!apiKey || !fromEmail || !frontendUrl)) {
+    if (!devMode && (!apiKey || !fromEmail || !publicBaseUrl)) {
       throw new ServiceUnavailableException('Password reset email is not configured.');
     }
 
@@ -238,7 +238,7 @@ export class AuthService {
     }
 
     try {
-      const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+      const resetUrl = `${publicBaseUrl}/auth/reset-link?token=${encodeURIComponent(token)}`;
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {

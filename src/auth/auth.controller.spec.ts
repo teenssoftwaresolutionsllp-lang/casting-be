@@ -21,6 +21,20 @@ describe('AuthController', () => {
     controller = new AuthController(mockAuthService);
   });
 
+  it('redirects the reset link to the app deep link', () => {
+    const res = {
+      type: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+    } as any;
+
+    (controller as any).resetLink('token-123', res);
+
+    expect(res.type).toHaveBeenCalledWith('html');
+    expect(res.send).toHaveBeenCalledWith(
+      expect.stringContaining('casting://reset-password?token=token-123'),
+    );
+  });
+
   describe('googleLogin', () => {
     it('delegates google login to authService', async () => {
       const mockResult = {

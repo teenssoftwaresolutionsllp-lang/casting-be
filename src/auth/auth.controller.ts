@@ -1,5 +1,6 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { type Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -64,6 +65,36 @@ export class AuthController {
   })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
+  }
+
+  @Get('reset-link')
+  @ApiOperation({ summary: 'Redirect a password reset email link into the app deep link' })
+  resetLink(@Query('token') token: string, @Res() res: Response) {
+    if (!token) {
+      return res.status(HttpStatus.BAD_REQUEST).type('html').send('<h3>Missing reset token.</h3>');
+    }
+
+    const appScheme = (process.env.APP_DEEP_LINK_SCHEME || 'casting').replace(/\/+$/, '');
+    const appLink = `${appScheme}://reset-password?token=${encodeURIComponent(token)}`;
+
+    return res.type('html').send(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Opening app...</title>
+        </head>
+        <body style="font-family: sans-serif; text-align: center; padding: 24px;">
+          <h3>Opening the app...</h3>
+          <p>If nothing happens, tap below.</p>
+          <p><a href="${appLink}">Open reset password screen</a></p>
+          <script>
+            window.location.href = "${appLink}";
+          </script>
+        </body>
+      </html>
+    `);
   }
 
   @Post('reset-password')
