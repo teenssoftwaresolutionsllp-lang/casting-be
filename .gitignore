@@ -1,11 +1,16 @@
-# compiled output
+# Dependencies
+node_modules/
+
+# Build outputs
 /dist
-/node_modules
 /build
+/.next
+/.nuxt
+/.cache
 /public/api/docs/
 
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 pnpm-debug.log*
@@ -13,15 +18,20 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
-# OS
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# OS / editor metadata
 .DS_Store
-
-# Tests
-/coverage
-/.nyc_output
-
-# IDEs and editors
-/.idea
+Thumbs.db
+.vscode/
+.idea/
 .project
 .classpath
 .c9/
@@ -29,38 +39,21 @@ lerna-debug.log*
 .settings/
 *.sublime-workspace
 
-# IDE - VSCode
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-
-# dotenv environment variable files
-.env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
-
-# temp directory
-.temp
-.tmp
-
-# Runtime data
-pids
+# Temp / runtime data
+.temp/
+.tmp/
+pids/
 *.pid
 *.seed
 *.pid.lock
 
-# Diagnostic reports (https://nodejs.org/api/report.html)
-report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+# Local deployments
+.vercel/
 
-# Firebase credentials
+# Firebase / service account secrets
 firebase-service-account.json
 firebase-adminsdk-*.json
 *-firebase-adminsdk-*.json
 
-*.json
-.vercel
-.env*
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

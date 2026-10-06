@@ -1,117 +1,120 @@
 # Talent Casting Expo Backend
 
-This is the NestJS backend for the Talent Casting mobile application. It uses a scalable, modular MVC architecture (Controller -> Service -> Repository) and relies on Drizzle ORM for PostgreSQL and Cloudinary for media uploads.
+This repository contains the NestJS API backend for the Talent Casting platform. It handles authentication, profile management, media uploads, stories, auditions, applications, chat, notifications, admin operations, and audit logging.
+
+The project is structured as a modular backend service using NestJS, Drizzle ORM, PostgreSQL, and Cloudinary.
+
+A separate admin frontend app is maintained alongside this backend for the dashboard experience.
+
+## Project Structure
+
+- Backend API: this repository
+- Admin web app: separate frontend project connected to this API
+- Database: PostgreSQL via Drizzle ORM
+- Media storage: Cloudinary
+- Email delivery: Resend
 
 ## Prerequisites
-- Node.js (v16+)
-- PostgreSQL (ensure a database is created)
-- Cloudinary Account (optional but recommended for media uploads, falls back to mock images if missing)
+
+- Node.js 22.x
+- PostgreSQL database
+- Cloudinary account
+- Resend API key for password reset emails
+- Firebase project credentials for Google login
 
 ## Environment Variables
-Create a `.env` file in the root directory and copy the contents from `.env.example`:
+
+Create a `.env` file in the root directory using the values from `.env.example`.
 
 ```env
-# Server Port
 PORT=3000
+NODE_ENV=development
+JWT_SECRET=supersecretjwtkeyforcastingapp2026
+DATABASE_URL=postgresql://user:password@host:5432/db_name
 
-# Database Connection
-# Replace with your actual Postgres connection string
-DATABASE_URL="postgres://postgres:password@localhost:5432/castingdb"
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 
-# JWT Secret
-JWT_SECRET="supersecretjwtkeyforcastingapp2026"
+FIREBASE_PROJECT_ID=casting-29490
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@casting-29490.iam.gserviceaccount.com
+FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
 
-# Cloudinary Setup (Optional - Falls back to mock if not provided)
-CLOUDINARY_CLOUD_NAME=""
-CLOUDINARY_API_KEY=""
-CLOUDINARY_API_SECRET=""
-
-# Password reset email (Resend)
-RESEND_API_KEY="re_..."
+RESEND_API_KEY=your_resend_api_key
 RESEND_FROM_EMAIL="Casting <no-reply@your-verified-domain.com>"
-FRONTEND_URL="https://your-frontend.example.com"
+BACKEND_URL=https://casting-be.vercel.app
+FRONTEND_URL=http://localhost:5173
+APP_DEEP_LINK_SCHEME=casting
+
+PASSWORD_RESET_DEV_MODE=true
 ```
+
+Notes:
+- `BACKEND_URL` is used for mobile reset-link routing.
+- `APP_DEEP_LINK_SCHEME` defines the app deep link, for example `casting://reset-password?...`.
+- `FRONTEND_URL` is still useful for web-based redirects, but mobile apps should not rely on it directly.
 
 ## Installation
 
 ```bash
-# Install dependencies
 npm install
 ```
 
-## Database Migrations (Drizzle)
-
-This project uses Drizzle ORM for robust and type-safe database interactions.
+## Database Setup
 
 ```bash
-# Generate the SQL migration files from src/db/schema.ts
 npm run generate
-
-# Apply the migrations to your Postgres database
 npm run migrate
-
-# Seed the default admin user (first time only)
 npm run seed:admin
-
-# Reset app data and load the 12-member demo dataset
 npm run seed
 ```
 
-The demo seed replaces existing app data (users, posts, stories, auditions, applications, chats, and related rows) but leaves admin accounts intact. Demo member accounts use the password `password123`; the primary login is `seeduser@example.com`.
+What each command does:
+- `generate` creates Drizzle migration files from the schema
+- `migrate` applies schema changes to PostgreSQL
+- `seed:admin` creates the default admin account
+- `seed` loads demo content and sample user data
 
-Run migrations after pulling schema changes and before starting the API. The stories endpoints require migrations `0002_plain_roland_deschain` and `0003_exotic_zeigeist`; without them, PostgreSQL reports `relation "stories" does not exist`.
+Default admin account:
 
-## Running the app
+```text
+Email: admin@castingexpo.com
+Password: Admin@123
+```
+
+## Running the Backend
 
 ```bash
-# development
 npm run start
-
-# watch mode (Recommended for dev)
 npm run start:dev
-
-# production mode
 npm run start:prod
 ```
 
-## API Documentation (Swagger)
+Swagger docs are available at:
 
-All A-Z APIs are documented using Swagger. Once the app is running (e.g. `npm run start:dev`), you can view the complete API documentation at:
+```text
+http://localhost:3000/api/docs
+```
 
-[http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+Production docs are served from the deployed backend URL too.
 
-From the Swagger UI, you can:
-- Explore all endpoints and their expected payloads/responses.
-- Authenticate via the "Authorize" button by passing a valid JWT token.
-- Test endpoints directly within the browser.
+## API Documentation
 
----
+Swagger UI is enabled in the app and exposes the routes for all modules.
 
-## TRK Code — Unique User Identifier
+Use it to:
+- inspect endpoints
+- test APIs directly
+- view request/response payloads
+- authorize with JWTs for protected routes
 
-Every user is assigned a unique **TRK Code** at registration.
+## Authentication APIs
 
-| Component | Description | Example |
-|-----------|-------------|---------|
-| `TRK` | Fixed prefix | `TRK` |
-| `26` | Last 2 digits of registration year | `26` (for 2026) |
-| `0001` | Sequential number (auto-increments) | `0001` → `0002` → `9999` → `10000` |
+### Register
 
-**Full example:** `TRK260001`, `TRK260002`, `TRK270001` (2027 resets sequence)
+Endpoint: `POST /auth/register`
 
-- Generated automatically during registration (including Google sign-up)
-- Returned in all authentication responses
-- Can be used as a login credential (see below)
-
----
-
-## Authentication API
-
-### Register — `POST /auth/register`
-
-Creates a new user account with auto-generated TRK code.
-
-**Required fields:** `username`, `email`, `password` (min 6 chars), `role` (`artist` | `audience`), `mobile`, `age`, `gender`
+Example:
 
 ```json
 {
@@ -126,31 +129,21 @@ Creates a new user account with auto-generated TRK code.
 }
 ```
 
-**Response includes:**
-```json
-{
-  "token": "eyJhbG...",
-  "user": {
-    "id": "uuid",
-    "trkCode": "TRK260001",
-    "username": "jane_doe",
-    "email": "jane@example.com",
-    "role": "artist"
-  }
-}
-```
+Response includes:
+- JWT token
+- user object
+- generated TRK code
 
-> **Audience users** see 100% profile completion after registration. **Artist users** must complete additional profile fields via the "Complete Profile" flow.
+### Login
 
-### Login — `POST /auth/login`
+Endpoint: `POST /auth/login`
 
-Accepts **three login methods** via a single `identifier` field:
+Supports login by:
+- email
+- mobile number
+- TRK code
 
-| Method | Example `identifier` |
-|--------|---------------------|
-| Email | `jane@example.com` |
-| Mobile | `+919876543210` |
-| TRK Code | `TRK260001` |
+Example payload:
 
 ```json
 {
@@ -159,49 +152,109 @@ Accepts **three login methods** via a single `identifier` field:
 }
 ```
 
-**Detection logic:**
-- Contains `@` → email lookup
-- Starts with `TRK` (case-insensitive) → TRK code lookup
-- Otherwise → mobile number lookup
+### Google Login
 
-### Google Login — `POST /auth/google`
+Endpoint: `POST /auth/google`
 
-Firebase Google ID token authentication. Auto-creates user with TRK code if new.
+Uses Firebase ID token verification and creates a user if needed.
 
-### Forgot Password — `POST /auth/forgot-password`
+### Forgot Password
 
-Sends a single-use password reset link when an account exists for the submitted email. Configure `RESEND_API_KEY`, a verified `RESEND_FROM_EMAIL`, and `FRONTEND_URL` first. The reset token expires after 30 minutes.
+Endpoint: `POST /auth/forgot-password`
 
-For local Swagger testing before a frontend or email provider is available, set `NODE_ENV=development` and `PASSWORD_RESET_DEV_MODE=true`. The endpoint returns `resetToken` only in this mode; use it in `POST /auth/reset-password`. Do not enable this mode in production.
+Example:
 
 ```json
-{ "email": "jane@example.com" }
+{
+  "email": "jane@example.com"
+}
 ```
 
-### Reset Password — `POST /auth/reset-password`
+Behavior:
+- checks the user by email
+- stores a hashed, time-limited password reset token
+- sends a reset email via Resend
+- in local development mode, returns a `resetToken` if `PASSWORD_RESET_DEV_MODE=true`
 
-Accepts the token from the email link and the new password.
+### Reset Password Flow for Mobile Apps
+
+The backend now supports a mobile-friendly reset flow.
+
+Email link format:
+
+```text
+https://casting-be.vercel.app/auth/reset-link?token=abc123
+```
+
+This route redirects to the app deep link:
+
+```text
+casting://reset-password?token=abc123
+```
+
+The actual API used by the app remains:
+
+```text
+POST /auth/reset-password
+```
+
+Payload:
 
 ```json
-{ "token": "token-from-reset-link", "password": "NewPassword123!" }
+{
+  "token": "token-from-email-link",
+  "password": "NewPassword123!"
+}
 ```
 
----
+The reset token is hashed before storage and expires after 30 minutes.
 
-## Admin Dashboard API
+### Reset Password Endpoint
 
-The admin system is **completely separate** from regular user authentication. Admin credentials are stored in a dedicated `admin_users` table.
+Endpoint: `POST /auth/reset-password`
 
-### Admin Authentication
+Validates:
+- token presence
+- token validity
+- token expiry
+- password hashing
 
-**Default credentials** (created via `npm run seed:admin`):
+On success:
+
+```json
+{
+  "message": "Password successfully reset."
+}
 ```
-Email:    admin@castingexpo.com
+
+## Profile Completion and Artist Setup
+
+Artist accounts are allowed to complete their profile later.
+
+There are dedicated profile endpoints for this:
+
+- `GET /profile/me`
+- `PATCH /profile/me`
+- `GET /profile/me/completion`
+
+This allows a user to register first and finish profile details later without blocking onboarding.
+
+## Admin APIs
+
+Admin authentication is separate from regular user authentication and uses a dedicated admin table.
+
+Default admin login:
+
+```text
+Email: admin@castingexpo.com
 Password: Admin@123
 ```
 
-### `POST /admin/login`
-No auth guard — this is the entry point for admin access.
+### Admin Login
+
+Endpoint: `POST /admin/login`
+
+Example:
 
 ```json
 {
@@ -210,10 +263,11 @@ No auth guard — this is the entry point for admin access.
 }
 ```
 
-**Response:**
+Response:
+
 ```json
 {
-  "token": "eyJhbG...",
+  "token": "jwt-token",
   "admin": {
     "id": "uuid",
     "email": "admin@castingexpo.com",
@@ -223,179 +277,152 @@ No auth guard — this is the entry point for admin access.
 }
 ```
 
-> The admin JWT includes `isAdmin: true`. Regular user tokens (artist/audience) will receive **403 Forbidden** on all admin routes.
+### Admin Protected Routes
 
-### Admin Endpoints
-
-All routes below require the admin Bearer token.
+All admin routes require the admin JWT in the Authorization header.
 
 #### Dashboard
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/dashboard` | Platform-wide statistics |
+- `GET /admin/dashboard`
 
-**Dashboard response:**
-```json
-{
-  "totalUsers": 150,
-  "totalArtists": 90,
-  "totalAudiences": 60,
-  "totalVideos": 320,
-  "totalAuditions": 45,
-  "totalApplications": 210,
-  "newUsersToday": 5,
-  "newUsersThisWeek": 22,
-  "newUsersThisMonth": 68
-}
-```
+Returns counts like:
+- total users
+- total artists
+- total audiences
+- total videos
+- total auditions
+- total applications
+- new users by day/week/month
 
 #### User Management
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/users?page=1&limit=20&search=&role=` | List all users (paginated, searchable by name/email/mobile/TRK/username, filterable by role) |
-| `GET` | `/admin/users/:id` | Full user profile with stats (videos, auditions, applications, followers, following counts) |
-| `GET` | `/admin/users/:id/videos` | All videos uploaded by user |
-| `GET` | `/admin/users/:id/auditions` | All auditions/casting calls created by user |
-| `GET` | `/admin/users/:id/applications` | All applications submitted by user |
-| `GET` | `/admin/users/:id/stories` | All stories posted by user |
-| `GET` | `/admin/users/:id/followers` | User's followers list |
-| `GET` | `/admin/users/:id/following` | User's following list |
+- `GET /admin/users`
+- `GET /admin/users/:id`
+- `GET /admin/users/:id/videos`
+- `GET /admin/users/:id/auditions`
+- `GET /admin/users/:id/applications`
+- `GET /admin/users/:id/stories`
+- `GET /admin/users/:id/followers`
+- `GET /admin/users/:id/following`
 
-#### Activity / Audit Logs
+Supports pagination, search, and role filtering.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/admin/users/:id/activity?page=1&limit=50` | Activity logs for a specific user |
-| `GET` | `/admin/activity-logs?page=1&limit=50&action=&userId=&startDate=&endDate=` | All platform activity logs with filters |
+#### Activity Logs
 
-**Filter parameters for `/admin/activity-logs`:**
-- `action` — Filter by action type (e.g., `LOGIN`, `REGISTER`, `VIDEO_UPLOAD`)
-- `userId` — Filter by specific user ID
-- `startDate` / `endDate` — ISO date range filter
+- `GET /admin/users/:id/activity`
+- `GET /admin/activity-logs`
 
----
+Filters available:
+- `page`
+- `limit`
+- `action`
+- `userId`
+- `startDate`
+- `endDate`
 
-## Activity Audit Log System
+## Activity Audit Logging
 
-Every user action is permanently recorded in the `activity_logs` table for historical tracking.
+The app records user actions in the activity logs table permanently.
 
-### Tracked Action Types
+Tracked action examples:
+- `REGISTER`
+- `LOGIN`
+- `PROFILE_UPDATE`
+- `VIDEO_UPLOAD`
+- `AUDITION_CREATE`
+- `APPLICATION_SUBMIT`
+- `FOLLOW`
+- `UNFOLLOW`
+- `STORY_CREATE`
+- `COMMENT`
+- `LIKE`
+- `REPORT`
+- `PASSWORD_CHANGE`
+- `ADMIN_LOGIN`
 
-| Action | Trigger |
-|--------|---------|
-| `REGISTER` | New user registration |
-| `LOGIN` | User login (any method) |
-| `PROFILE_UPDATE` | Profile details changed |
-| `VIDEO_UPLOAD` | New video uploaded |
-| `AUDITION_CREATE` | New audition/casting call created |
-| `APPLICATION_SUBMIT` | Application submitted to an audition |
-| `FOLLOW` | User followed another user |
-| `UNFOLLOW` | User unfollowed another user |
-| `STORY_CREATE` | New story posted |
-| `COMMENT` | Comment posted on a video |
-| `LIKE` | Video or comment liked |
-| `REPORT` | Content or user reported |
-| `PASSWORD_CHANGE` | Password updated |
-| `ADMIN_LOGIN` | Admin panel login |
+## Media Uploads
 
-### Log Entry Structure
+The media module uploads files to Cloudinary with file-size limits.
 
-Each log entry stores:
-- **userId** — Who performed the action
-- **action** — What action was performed
-- **entity** / **entityId** — What object was affected (e.g., `video`, `audition`)
-- **details** — JSON metadata with additional context
-- **ipAddress** / **userAgent** — Client information
-- **createdAt** — Timestamp (stored permanently, never deleted)
+Current upload limits:
+- generic upload: 100 MB
+- photo upload: 50 MB
+- video upload: 500 MB
 
-### Developer Usage
+Video endpoint:
 
-`ActivityLogService` is globally available. Inject it in any controller/service:
-
-```typescript
-constructor(private readonly activityLogService: ActivityLogService) {}
-
-// Log an action
-await this.activityLogService.log(
-  userId,           // who
-  'VIDEO_UPLOAD',   // action
-  'video',          // entity type
-  videoId,          // entity ID
-  { title: 'My Reel' },  // extra details (JSON)
-  req.ip,           // IP address
-  req.headers['user-agent'], // user agent
-);
+```text
+POST /videos/upload
 ```
-
----
 
 ## Stories API
 
-All story endpoints require a JWT bearer token. Stories accept image or video uploads through Cloudinary and remain active for 24 hours.
+Stories remain active for 24 hours and allow image or video uploads.
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `POST` | `/stories` | Upload a multipart `file` image or video and create a story. |
-| `GET` | `/stories/feed?limit=20&offset=0` | Get active stories grouped by account, including per-story viewed status. `limit` is capped at 50. |
-| `POST` | `/stories/:id/views` | Mark an active story as viewed. Repeated requests are safe. |
-| `DELETE` | `/stories/:id` | Delete a story owned by the authenticated account. |
+Endpoints:
 
-To upload, send `multipart/form-data` with a `file` field. The feed excludes expired stories; pagination is by account, so a creator's active stories are returned together.
+- `POST /stories`
+- `GET /stories/feed`
+- `POST /stories/:id/views`
+- `DELETE /stories/:id`
 
----
+## Core Database Tables
 
-## Architecture
-
-- **Auth**: JWT generation and verification. Multi-credential login (email/mobile/TRK code). Google Firebase auth.
-- **Users**: Artist profiles, Audience profiles, TRK code assignment, followers logic, profile completion tracking.
-- **Videos**: Feed algorithm, liking, commenting.
-- **Auditions**: Casting call creation and discovery.
-- **Applications**: Linking Actors to Auditions.
-- **Chat**: 1:1 real-time messaging structures.
-- **Notifications**: Internal alert tracking.
-- **Media**: Cloudinary integration for scalable assets.
-- **Stories**: 24-hour image/video stories, grouped feeds, view tracking, and owner-only deletion.
-- **Activity Log**: Global audit trail recording all user actions permanently.
-- **Admin**: Separate admin authentication, dashboard stats, full user management, and activity log viewer.
-
-## Database Tables
-
-| Table | Purpose |
-|-------|---------|
-| `users` | User accounts (artist/audience) with TRK codes |
-| `follows` | User follow relationships |
-| `videos` | Uploaded video content |
-| `video_likes` | Video like records |
-| `comments` | Video comments |
-| `comment_likes` | Comment like records |
-| `auditions` | Casting calls |
-| `applications` | Audition applications |
-| `stories` | 24-hour stories |
-| `story_views` | Story view tracking |
-| `chats` | Chat conversations |
-| `chat_participants` | Chat membership |
-| `messages` | Chat messages |
-| `notifications` | User notifications |
-| `activity_logs` | Audit trail (permanent) |
-| `admin_users` | Admin credentials (separate from users) |
+- `users`
+- `follows`
+- `videos`
+- `video_likes`
+- `comments`
+- `comment_likes`
+- `auditions`
+- `applications`
+- `stories`
+- `story_views`
+- `chats`
+- `chat_participants`
+- `messages`
+- `notifications`
+- `activity_logs`
+- `admin_users`
 
 ## NPM Scripts
 
-| Script | Command | Description |
-|--------|---------|-------------|
-| `start` | `node dist/src/main.js` | Start production server |
-| `start:dev` | `nest start --watch` | Start dev server with hot reload |
-| `build` | `nest build` | Compile TypeScript |
-| `generate` | `drizzle-kit generate` | Generate DB migration files |
-| `migrate` | `ts-node src/db/migrate.ts` | Apply DB migrations |
-| `seed` | `ts-node src/db/seed.ts` | Seed sample data |
-| `seed:admin` | `ts-node src/db/seed-admin.ts` | Create default admin user |
-| `test` | `jest` | Run unit tests |
-| `lint` | `eslint --fix` | Lint and auto-fix |
+```bash
+npm run start
+npm run start:dev
+npm run start:prod
+npm run build
+npm run test
+npm run lint
+npm run generate
+npm run migrate
+npm run seed
+npm run seed:admin
+```
 
+## Deployment
 
-NODE_ENV=development
-PASSWORD_RESET_DEV_MODE=true
-RESEND_API_KEY=your_resend_api_key
+This backend is designed to be deployed to Vercel as a serverless Node API.
+
+Recommended production flow:
+- backend API deployed separately
+- admin frontend deployed separately
+- backend env includes `BACKEND_URL` and `APP_DEEP_LINK_SCHEME`
+- frontend env points to the backend URL
+
+Example backend URL:
+
+```text
+https://casting-be.vercel.app
+```
+
+## Notes
+
+- Admin and user authentication are completely separate.
+- Artists can register and fill profile information later.
+- Password reset uses a token redirect flow for mobile deep links.
+- Swagger docs need static assets to be served correctly in production deployments.
+
+## License
+
+This project is private and intended for internal platform usage.
