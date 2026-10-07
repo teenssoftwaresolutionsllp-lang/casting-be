@@ -10,7 +10,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { FirebaseService } from './firebase.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -238,7 +238,7 @@ export class AuthService {
     }
 
     try {
-      const resetUrl = `${publicBaseUrl}/auth/reset-link?token=${encodeURIComponent(token)}`;
+      const resetUrl = `${publicBaseUrl}/reset-password?token=${encodeURIComponent(token)}`;
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
