@@ -35,6 +35,28 @@ describe('AuthController', () => {
     );
   });
 
+  it('normalizes app deep-link schemes with protocol separators', () => {
+    const originalScheme = process.env.APP_DEEP_LINK_SCHEME;
+    process.env.APP_DEEP_LINK_SCHEME = 'casting://';
+
+    const res = {
+      type: jest.fn().mockReturnThis(),
+      send: jest.fn(),
+    } as any;
+
+    (controller as any).resetLink('token-456', res);
+
+    expect(res.send).toHaveBeenCalledWith(
+      expect.stringContaining('casting://reset-password?token=token-456'),
+    );
+
+    if (originalScheme === undefined) {
+      delete process.env.APP_DEEP_LINK_SCHEME;
+    } else {
+      process.env.APP_DEEP_LINK_SCHEME = originalScheme;
+    }
+  });
+
   describe('googleLogin', () => {
     it('delegates google login to authService', async () => {
       const mockResult = {

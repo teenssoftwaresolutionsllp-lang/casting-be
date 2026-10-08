@@ -660,3 +660,25 @@ https://casting-be.vercel.app
 ## License
 
 This project is private and intended for internal platform usage.
+
+
+
+APP_DEEP_LINK_SCHEME=casting
+BACKEND_URL=https://casting-be.vercel.app
+CLOUDINARY_API_KEY=516387729162788
+CLOUDINARY_API_SECRET=mkNOglXKr13ziWD4Yl65wJ3QLuA
+CLOUDINARY_CLOUD_NAME=prmynfbv
+DATABASE_URL="postgresql://neondb_owner:npg_y1nfKVeqcx4M@ep-empty-wave-a5rmrick-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+ENABLE_TEST_MODE=false
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@casting-29490.iam.gserviceaccount.com
+FIREBASE_PROJECT_ID=casting-29490
+FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
+FRONTEND_URL=http://localhost:5173
+JWT_SECRET=supersecretjwtkeyforcastingapp2026
+NODE_ENV=production
+PASSWORD_RESET_DEV_MODE=false
+PORT=3000
+RAZORPAY_KEY_ID=rzp_test_SRrKIfsKje5uNq
+RAZORPAY_KEY_SECRET=KfntU4VVvNMAX64AvdhClFNd
+
+RESEND_FROM_EMAIL="Casting <no-reply@treemediaagency.com>"

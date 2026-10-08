@@ -6,7 +6,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -67,15 +67,21 @@ export class AuthController {
     return this.authService.forgotPassword(dto);
   }
 
-  @Get('reset-link')
+  @Get(['reset-link', 'reset-password'])
   @ApiOperation({ summary: 'Redirect a password reset email link into the app deep link' })
   resetLink(@Query('token') token: string, @Res() res: Response) {
     if (!token) {
       return res.status(HttpStatus.BAD_REQUEST).type('html').send('<h3>Missing reset token.</h3>');
     }
 
-    const appScheme = (process.env.APP_DEEP_LINK_SCHEME || 'casting').replace(/\/+$/, '');
+    const appScheme = (process.env.APP_DEEP_LINK_SCHEME || 'casting')
+      .trim()
+      .replace(/^https?:\/\//i, '')
+      .replace(/^app:\/\//i, '')
+      .replace(/[:/\\]+$/, '')
+      .replace(/\s+/g, '');
     const appLink = `${appScheme}://reset-password?token=${encodeURIComponent(token)}`;
+    const webFallback = `${(process.env.FRONTEND_URL || process.env.BACKEND_URL || 'https://casting.example.com').replace(/\/+$/, '')}/reset-password?token=${encodeURIComponent(token)}`;
 
     return res.type('html').send(`
       <!doctype html>
@@ -83,6 +89,7 @@ export class AuthController {
         <head>
           <meta charset="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <meta http-equiv="refresh" content="0; url=${appLink}" />
           <title>Opening app...</title>
         </head>
         <body style="font-family: sans-serif; text-align: center; padding: 24px;">
@@ -90,7 +97,18 @@ export class AuthController {
           <p>If nothing happens, tap below.</p>
           <p><a href="${appLink}">Open reset password screen</a></p>
           <script>
-            window.location.href = "${appLink}";
+            const deepLink = "${appLink}";
+            const fallbackUrl = "${webFallback}";
+            const fallbackTimer = setTimeout(() => {
+              window.location.href = fallbackUrl;
+            }, 1500);
+
+            try {
+              window.location.href = deepLink;
+            } catch (error) {
+              clearTimeout(fallbackTimer);
+              window.location.href = fallbackUrl;
+            }
           </script>
         </body>
       </html>
