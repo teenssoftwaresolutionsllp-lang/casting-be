@@ -20,6 +20,8 @@ export const users = pgTable('users', {
   country: text('country'),
   state: text('state'),
   city: text('city'),
+  address: text('address'),
+  postalCode: text('postal_code'),
   profilePhoto: text('profile_photo'),
   role: text('role').notNull(), // 'artist' | 'audience'
   
@@ -54,13 +56,16 @@ export const users = pgTable('users', {
   previousWork: jsonb('previous_work').$type<string[]>(),
   instagram: text('instagram'),
   youtube: text('youtube'),
+  facebookUrl: text('facebook_url'),
   imdb: text('imdb'),
   website: text('website'),
   resume: text('resume'),
   awards: text('awards'),
   bio: text('bio'),
   trkCode: text('trk_code').unique(), // Auto-generated: TRK260001, TRK260002...
+  emailVerified: boolean('email_verified').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // ==========================================

@@ -1,5 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, IsArray, MinLength, IsInt, Min, Max } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsIn,
+  IsNumber,
+  IsArray,
+  MinLength,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
+import { USER_ROLES } from '../../users/user-roles';
 
 export class RegisterDto {
   @ApiProperty({ example: 'jane_doe', description: 'Unique username' })
@@ -7,28 +20,44 @@ export class RegisterDto {
   @IsNotEmpty()
   username: string;
 
-  @ApiProperty({ example: 'user@example.com', description: 'User email address' })
+  @ApiProperty({
+    example: 'user@example.com',
+    description: 'User email address',
+  })
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: 'Password123!', description: 'Strong password (min 6 chars)' })
+  @ApiProperty({
+    example: 'Password123!',
+    description: 'Strong password (min 6 chars)',
+  })
   @IsString()
   @MinLength(6)
   @IsNotEmpty()
   password: string;
 
-  @ApiPropertyOptional({ example: 'Jane Doe', description: 'User full name; defaults to username when omitted' })
+  @ApiPropertyOptional({
+    example: 'Jane Doe',
+    description: 'User full name; defaults to username when omitted',
+  })
   @IsString()
   @IsOptional()
   fullName?: string;
 
-  @ApiProperty({ example: 'artist', enum: ['artist', 'audience'], description: 'Account role type' })
-  @IsEnum(['artist', 'audience'])
+  @ApiProperty({
+    example: 'artist',
+    enum: USER_ROLES,
+    description: 'Account role type',
+  })
+  @IsIn(USER_ROLES)
   @IsNotEmpty()
   role: string;
 
-  @ApiProperty({ example: '+91 9876543210', description: 'Contact phone number' })
+  @ApiProperty({
+    example: '+91 9876543210',
+    description: 'Contact phone number',
+  })
   @IsString()
   @IsNotEmpty()
   mobile: string;
@@ -39,7 +68,10 @@ export class RegisterDto {
   @Max(120)
   age: number;
 
-  @ApiPropertyOptional({ example: 'Jane Austen', description: 'Artist stage name' })
+  @ApiPropertyOptional({
+    example: 'Jane Austen',
+    description: 'Artist stage name',
+  })
   @IsString()
   @IsOptional()
   stageName?: string;
@@ -49,7 +81,11 @@ export class RegisterDto {
   @IsOptional()
   dob?: string;
 
-  @ApiProperty({ example: 'Female', enum: ['Male', 'Female', 'Other', 'Prefer not to say'], description: 'Gender identity' })
+  @ApiProperty({
+    example: 'Female',
+    enum: ['Male', 'Female', 'Other', 'Prefer not to say'],
+    description: 'Gender identity',
+  })
   @IsString()
   @IsNotEmpty()
   gender: string;
@@ -59,7 +95,10 @@ export class RegisterDto {
   @IsOptional()
   country?: string;
 
-  @ApiPropertyOptional({ example: 'Maharashtra', description: 'State location' })
+  @ApiPropertyOptional({
+    example: 'Maharashtra',
+    description: 'State location',
+  })
   @IsString()
   @IsOptional()
   state?: string;
@@ -69,63 +108,103 @@ export class RegisterDto {
   @IsOptional()
   city?: string;
 
-  @ApiPropertyOptional({ example: 'https://cloudinary.com/avatar.jpg', description: 'Profile image URL' })
+  @ApiPropertyOptional({
+    example: 'https://cloudinary.com/avatar.jpg',
+    description: 'Profile image URL',
+  })
   @IsString()
   @IsOptional()
   profilePhoto?: string;
 
   // Professional Specs (Artist role)
-  @ApiPropertyOptional({ example: 'Actor', description: 'Artist talent category' })
+  @ApiPropertyOptional({
+    example: 'Actor',
+    description: 'Artist talent category',
+  })
   @IsString()
   @IsOptional()
   category?: string;
 
-  @ApiPropertyOptional({ example: '3-5 Years', description: 'Years of professional experience' })
+  @ApiPropertyOptional({
+    example: '3-5 Years',
+    description: 'Years of professional experience',
+  })
   @IsString()
   @IsOptional()
   experience?: string;
 
-  @ApiPropertyOptional({ type: [String], example: ['Acting', 'Screenwriting'], description: 'Specialized skills and crafts' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Acting', 'Screenwriting'],
+    description: 'Specialized skills and crafts',
+  })
   @IsArray()
   @IsOptional()
   skills?: string[];
 
-  @ApiPropertyOptional({ type: [String], example: ['Hindi', 'English'], description: 'Languages spoken' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Hindi', 'English'],
+    description: 'Languages spoken',
+  })
   @IsArray()
   @IsOptional()
   languages?: string[];
 
-  @ApiPropertyOptional({ type: [String], example: ['Hindi'], description: 'Languages willing to perform in' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Hindi'],
+    description: 'Languages willing to perform in',
+  })
   @IsArray()
   @IsOptional()
   preferredLanguage?: string[];
 
-  @ApiPropertyOptional({ example: 'Graduate', description: 'Highest education level' })
+  @ApiPropertyOptional({
+    example: 'Graduate',
+    description: 'Highest education level',
+  })
   @IsString()
   @IsOptional()
   qualification?: string;
 
-  @ApiPropertyOptional({ example: 'National School of Drama', description: 'Acting academy or institute name' })
+  @ApiPropertyOptional({
+    example: 'National School of Drama',
+    description: 'Acting academy or institute name',
+  })
   @IsString()
   @IsOptional()
   institute?: string;
 
-  @ApiPropertyOptional({ example: 'Full-Time Artist', description: 'Current occupation' })
+  @ApiPropertyOptional({
+    example: 'Full-Time Artist',
+    description: 'Current occupation',
+  })
   @IsString()
   @IsOptional()
   occupation?: string;
 
-  @ApiPropertyOptional({ type: [String], example: ['Movies', 'Web Series'], description: 'Types of projects available for' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Movies', 'Web Series'],
+    description: 'Types of projects available for',
+  })
   @IsArray()
   @IsOptional()
   availableFor?: string[];
 
-  @ApiPropertyOptional({ example: 'No', description: 'Union membership status' })
+  @ApiPropertyOptional({
+    example: 'No',
+    description: 'Union membership status',
+  })
   @IsString()
   @IsOptional()
   union?: string;
 
-  @ApiPropertyOptional({ example: 'Yes', description: 'Willingness to relocate for shoots' })
+  @ApiPropertyOptional({
+    example: 'Yes',
+    description: 'Willingness to relocate for shoots',
+  })
   @IsString()
   @IsOptional()
   relocate?: string;
@@ -141,12 +220,18 @@ export class RegisterDto {
   @IsOptional()
   weight?: number;
 
-  @ApiPropertyOptional({ example: 'Athletic', description: 'Physical build category' })
+  @ApiPropertyOptional({
+    example: 'Athletic',
+    description: 'Physical build category',
+  })
   @IsString()
   @IsOptional()
   bodyType?: string;
 
-  @ApiPropertyOptional({ example: 'Wheatish', description: 'Skin tone category' })
+  @ApiPropertyOptional({
+    example: 'Wheatish',
+    description: 'Skin tone category',
+  })
   @IsString()
   @IsOptional()
   skinTone?: string;
@@ -161,73 +246,117 @@ export class RegisterDto {
   @IsOptional()
   eyeColor?: string;
 
-  @ApiPropertyOptional({ type: [String], example: ['Hero', 'Character Artist'], description: 'Preferred roles to audition for' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Hero', 'Character Artist'],
+    description: 'Preferred roles to audition for',
+  })
   @IsArray()
   @IsOptional()
   preferredRole?: string[];
 
-  @ApiPropertyOptional({ example: 'Anywhere', description: 'Travel bounds availability' })
+  @ApiPropertyOptional({
+    example: 'Anywhere',
+    description: 'Travel bounds availability',
+  })
   @IsString()
   @IsOptional()
   travelAvailability?: string;
 
-  @ApiPropertyOptional({ example: 'Yes', description: 'Available for night shifts' })
+  @ApiPropertyOptional({
+    example: 'Yes',
+    description: 'Available for night shifts',
+  })
   @IsString()
   @IsOptional()
   nightShoots?: string;
 
   // Portfolio & Media
-  @ApiPropertyOptional({ example: 'https://cloudinary.com/headshot.jpg', description: 'Headshot portfolio image URL' })
+  @ApiPropertyOptional({
+    example: 'https://cloudinary.com/headshot.jpg',
+    description: 'Headshot portfolio image URL',
+  })
   @IsString()
   @IsOptional()
   headshot?: string;
 
-  @ApiPropertyOptional({ example: 'https://cloudinary.com/fullbody.jpg', description: 'Full body portfolio image URL' })
+  @ApiPropertyOptional({
+    example: 'https://cloudinary.com/fullbody.jpg',
+    description: 'Full body portfolio image URL',
+  })
   @IsString()
   @IsOptional()
   fullBody?: string;
 
-  @ApiPropertyOptional({ example: 'https://cloudinary.com/intro.mp4', description: 'Self-taped intro video link' })
+  @ApiPropertyOptional({
+    example: 'https://cloudinary.com/intro.mp4',
+    description: 'Self-taped intro video link',
+  })
   @IsString()
   @IsOptional()
   introVideo?: string;
 
-  @ApiPropertyOptional({ type: [String], example: ['Short Film', 'Advertisement'], description: 'Past project category work history' })
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Short Film', 'Advertisement'],
+    description: 'Past project category work history',
+  })
   @IsArray()
   @IsOptional()
   previousWork?: string[];
 
-  @ApiPropertyOptional({ example: 'https://instagram.com/jane', description: 'Instagram social link' })
+  @ApiPropertyOptional({
+    example: 'https://instagram.com/jane',
+    description: 'Instagram social link',
+  })
   @IsString()
   @IsOptional()
   instagram?: string;
 
-  @ApiPropertyOptional({ example: 'https://youtube.com/jane', description: 'YouTube channel link' })
+  @ApiPropertyOptional({
+    example: 'https://youtube.com/jane',
+    description: 'YouTube channel link',
+  })
   @IsString()
   @IsOptional()
   youtube?: string;
 
-  @ApiPropertyOptional({ example: 'https://imdb.com/name/nm123', description: 'IMDb actor profile link' })
+  @ApiPropertyOptional({
+    example: 'https://imdb.com/name/nm123',
+    description: 'IMDb actor profile link',
+  })
   @IsString()
   @IsOptional()
   imdb?: string;
 
-  @ApiPropertyOptional({ example: 'https://janedoe.com', description: 'Personal portfolio website link' })
+  @ApiPropertyOptional({
+    example: 'https://janedoe.com',
+    description: 'Personal portfolio website link',
+  })
   @IsString()
   @IsOptional()
   website?: string;
 
-  @ApiPropertyOptional({ example: 'https://cloudinary.com/resume.pdf', description: 'Resume PDF upload URL' })
+  @ApiPropertyOptional({
+    example: 'https://cloudinary.com/resume.pdf',
+    description: 'Resume PDF upload URL',
+  })
   @IsString()
   @IsOptional()
   resume?: string;
 
-  @ApiPropertyOptional({ example: 'Best Debut Actor award at State festival', description: 'Awards & Achievements' })
+  @ApiPropertyOptional({
+    example: 'Best Debut Actor award at State festival',
+    description: 'Awards & Achievements',
+  })
   @IsString()
   @IsOptional()
   awards?: string;
 
-  @ApiPropertyOptional({ example: 'Experienced screen actor with classical training.', description: 'Brief bio details' })
+  @ApiPropertyOptional({
+    example: 'Experienced screen actor with classical training.',
+    description: 'Brief bio details',
+  })
   @IsString()
   @IsOptional()
   bio?: string;

@@ -5,6 +5,8 @@ import {
   Param,
   Query,
   Body,
+  Patch,
+  Delete,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -77,6 +79,29 @@ export class AdminController {
     return this.adminService.getUserDetail(id);
   }
 
+  @Patch('users/:id')
+  @UseGuards(AdminAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update selected user profile fields' })
+  @ApiResponse({ status: 200, description: 'Returns the complete updated user profile.' })
+  @ApiResponse({ status: 400, description: 'Invalid values or unsupported fields.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
+  async updateUser(@Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.adminService.updateUser(id, body);
+  }
+
+  @Delete('users/:id')
+  @UseGuards(AdminAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a user and cascade related records' })
+  @ApiResponse({ status: 200, description: 'User deleted.' })
+  @ApiResponse({ status: 404, description: 'User not found.' })
+  @ApiResponse({ status: 409, description: 'Deletion is blocked by a related record.' })
+  async deleteUser(@Param('id') id: string) {
+    return this.adminService.deleteUser(id);
+  }
+
   @Get('users/:id/videos')
   @UseGuards(AdminAuthGuard)
   @ApiBearerAuth()
@@ -138,7 +163,7 @@ export class AdminController {
   async getUserActivityLogs(
     @Param('id') id: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
   ) {
     return this.adminService.getUserActivityLogs(id, page, limit);
   }

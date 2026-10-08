@@ -86,7 +86,7 @@ export class UserRepository {
   async update(id: string, updateData: Partial<typeof schema.users.$inferInsert>) {
     const [updated] = await this.db
       .update(schema.users)
-      .set(updateData)
+      .set({ ...updateData, updatedAt: new Date() })
       .where(eq(schema.users.id, id))
       .returning();
     return updated;

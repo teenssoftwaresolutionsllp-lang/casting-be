@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, or, ilike, sql, desc, gte } from 'drizzle-orm';
+import { eq, and, or, ilike, sql, desc, gte, ne } from 'drizzle-orm';
 import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 
@@ -22,6 +22,15 @@ export class AdminRepository {
       .where(eq(schema.adminUsers.email, email))
       .limit(1);
     return results[0] || null;
+  }
+
+  async findAdminById(id: string) {
+    const [admin] = await this.db
+      .select()
+      .from(schema.adminUsers)
+      .where(eq(schema.adminUsers.id, id))
+      .limit(1);
+    return admin || null;
   }
 
   async createAdmin(data: typeof schema.adminUsers.$inferInsert) {
@@ -63,7 +72,22 @@ export class AdminRepository {
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     return this.db
-      .select()
+      .select({
+        id: schema.users.id,
+        fullName: schema.users.fullName,
+        username: schema.users.username,
+        email: schema.users.email,
+        role: schema.users.role,
+        mobile: schema.users.mobile,
+        trkCode: schema.users.trkCode,
+        city: schema.users.city,
+        state: schema.users.state,
+        country: schema.users.country,
+        gender: schema.users.gender,
+        occupation: schema.users.occupation,
+        emailVerified: schema.users.emailVerified,
+        createdAt: schema.users.createdAt,
+      })
       .from(schema.users)
       .where(whereClause)
       .orderBy(desc(schema.users.createdAt))
@@ -108,13 +132,53 @@ export class AdminRepository {
     return results[0] || null;
   }
 
+  async hasDuplicateUserValue(
+    field: 'username' | 'email' | 'mobile' | 'trkCode',
+    value: string,
+    excludingUserId: string,
+  ): Promise<boolean> {
+    const column = {
+      username: schema.users.username,
+      email: schema.users.email,
+      mobile: schema.users.mobile,
+      trkCode: schema.users.trkCode,
+    }[field];
+    const [existing] = await this.db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(and(eq(column, value), ne(schema.users.id, excludingUserId)))
+      .limit(1);
+    return Boolean(existing);
+  }
+
+  async updateUser(id: string, values: Partial<typeof schema.users.$inferInsert>) {
+    const [updated] = await this.db
+      .update(schema.users)
+      .set(values)
+      .where(eq(schema.users.id, id))
+      .returning();
+    return updated || null;
+  }
+
+  async deleteUser(id: string): Promise<boolean> {
+    const [deleted] = await this.db
+      .delete(schema.users)
+      .where(eq(schema.users.id, id))
+      .returning({ id: schema.users.id });
+    return Boolean(deleted);
+  }
+
   // ==========================================
   // USER CONTENT QUERIES
   // ==========================================
 
   async getUserVideos(userId: string) {
     return this.db
-      .select()
+      .select({
+        id: schema.videos.id,
+        title: schema.videos.title,
+        category: schema.videos.category,
+      })
       .from(schema.videos)
       .where(eq(schema.videos.creatorId, userId))
       .orderBy(desc(schema.videos.createdAt));
@@ -122,7 +186,11 @@ export class AdminRepository {
 
   async getUserAuditions(userId: string) {
     return this.db
-      .select()
+      .select({
+        id: schema.auditions.id,
+        title: schema.auditions.title,
+        category: schema.auditions.category,
+      })
       .from(schema.auditions)
       .where(eq(schema.auditions.creatorId, userId))
       .orderBy(desc(schema.auditions.createdAt));
@@ -132,13 +200,8 @@ export class AdminRepository {
     return this.db
       .select({
         id: schema.applications.id,
-        auditionId: schema.applications.auditionId,
-        coverLetter: schema.applications.coverLetter,
         status: schema.applications.status,
-        details: schema.applications.details,
-        createdAt: schema.applications.createdAt,
         auditionTitle: schema.auditions.title,
-        auditionCategory: schema.auditions.category,
       })
       .from(schema.applications)
       .leftJoin(schema.auditions, eq(schema.applications.auditionId, schema.auditions.id))
@@ -148,7 +211,10 @@ export class AdminRepository {
 
   async getUserStories(userId: string) {
     return this.db
-      .select()
+      .select({
+        id: schema.stories.id,
+        createdAt: schema.stories.createdAt,
+      })
       .from(schema.stories)
       .where(eq(schema.stories.creatorId, userId))
       .orderBy(desc(schema.stories.createdAt));
@@ -159,10 +225,6 @@ export class AdminRepository {
       .select({
         id: schema.users.id,
         fullName: schema.users.fullName,
-        email: schema.users.email,
-        profilePhoto: schema.users.profilePhoto,
-        role: schema.users.role,
-        trkCode: schema.users.trkCode,
       })
       .from(schema.follows)
       .innerJoin(schema.users, eq(schema.follows.followerId, schema.users.id))
@@ -174,10 +236,6 @@ export class AdminRepository {
       .select({
         id: schema.users.id,
         fullName: schema.users.fullName,
-        email: schema.users.email,
-        profilePhoto: schema.users.profilePhoto,
-        role: schema.users.role,
-        trkCode: schema.users.trkCode,
       })
       .from(schema.follows)
       .innerJoin(schema.users, eq(schema.follows.followingId, schema.users.id))
@@ -252,6 +310,14 @@ export class AdminRepository {
       .select({ count: sql<number>`count(*)::int` })
       .from(schema.applications)
       .where(eq(schema.applications.applicantId, userId));
+    return result?.count || 0;
+  }
+
+  async getStoriesCount(userId: string): Promise<number> {
+    const [result] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.stories)
+      .where(eq(schema.stories.creatorId, userId));
     return result?.count || 0;
   }
 

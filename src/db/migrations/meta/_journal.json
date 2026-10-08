@@ -8,6 +8,13 @@
       "when": 1791199041088,
       "tag": "0000_goofy_vulcan",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791442937336,
+      "tag": "0001_freezing_midnight",
+      "breakpoints": true
     }
   ]
 }

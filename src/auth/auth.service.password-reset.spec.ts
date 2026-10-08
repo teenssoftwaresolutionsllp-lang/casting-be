@@ -66,7 +66,7 @@ describe('AuthService - Password Reset', () => {
       throw new Error('Reset email did not contain a token.');
     }
     expect(resetUrl.origin + resetUrl.pathname).toBe(
-      'https://casting.example.com/reset-password',
+      'https://casting.example.com/auth/reset-link',
     );
     expect(token).toMatch(/^[a-f0-9]{64}$/);
     expect(mockUserRepo.setPasswordResetToken.mock.calls[0][1]).toBe(
@@ -91,10 +91,14 @@ describe('AuthService - Password Reset', () => {
 
     const result = await authService.forgotPassword({ email: 'user@example.com' });
 
-    expect(result.resetToken).toMatch(/^[a-f0-9]{64}$/);
+    const resetToken = result.resetToken;
+    if (typeof resetToken !== 'string') {
+      throw new Error('Development reset response did not contain a token.');
+    }
+    expect(resetToken).toMatch(/^[a-f0-9]{64}$/);
     expect(mockUserRepo.setPasswordResetToken).toHaveBeenCalledWith(
       'user-1',
-      crypto.createHash('sha256').update(result.resetToken).digest('hex'),
+      crypto.createHash('sha256').update(resetToken).digest('hex'),
       expect.any(Date),
     );
     expect(fetchMock).not.toHaveBeenCalled();
