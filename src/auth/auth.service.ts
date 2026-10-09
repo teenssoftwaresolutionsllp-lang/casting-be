@@ -26,18 +26,26 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const existing = await this.userRepository.findByEmail(dto.email);
     if (existing) {
-      throw new BadRequestException('A user with this email address already exists.');
+      throw new BadRequestException(
+        'A user with this email address already exists.',
+      );
     }
 
-    const existingUsername = await this.userRepository.findByUsername(dto.username);
+    const existingUsername = await this.userRepository.findByUsername(
+      dto.username,
+    );
     if (existingUsername) {
-      throw new BadRequestException('A user with this username already exists.');
+      throw new BadRequestException(
+        'A user with this username already exists.',
+      );
     }
 
     if (dto.mobile) {
       const existingMobile = await this.userRepository.findByMobile(dto.mobile);
       if (existingMobile) {
-        throw new BadRequestException('A user with this mobile number already exists.');
+        throw new BadRequestException(
+          'A user with this mobile number already exists.',
+        );
       }
     }
 
@@ -45,7 +53,7 @@ export class AuthService {
 
     // Generate unique TRK code (e.g., TRK260001)
     const trkCode = await this.userRepository.generateTrkCode();
-    
+
     // Construct user DB record
     const user = await this.userRepository.create({
       username: dto.username,
@@ -63,7 +71,7 @@ export class AuthService {
       city: dto.city,
       profilePhoto: dto.profilePhoto,
       trkCode,
-      
+
       // Artist-specific specs
       category: dto.category,
       experience: dto.experience,
@@ -76,7 +84,7 @@ export class AuthService {
       availableFor: dto.availableFor,
       union: dto.union,
       relocate: dto.relocate,
-      
+
       // Physical specs
       height: dto.height,
       weight: dto.weight,
@@ -87,7 +95,7 @@ export class AuthService {
       preferredRole: dto.preferredRole,
       travelAvailability: dto.travelAvailability,
       nightShoots: dto.nightShoots,
-      
+
       // Portfolio
       headshot: dto.headshot,
       fullBody: dto.fullBody,
@@ -102,7 +110,11 @@ export class AuthService {
       bio: dto.bio,
     });
 
-    const token = await this.generateToken(user.id, user.email || '', user.role);
+    const token = await this.generateToken(
+      user.id,
+      user.email || '',
+      user.role,
+    );
 
     return {
       token,
@@ -138,15 +150,23 @@ export class AuthService {
     }
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials. No account found with the provided identifier.');
+      throw new UnauthorizedException(
+        'Invalid credentials. No account found with the provided identifier.',
+      );
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      throw new UnauthorizedException('Invalid credentials. Password does not match.');
+      throw new UnauthorizedException(
+        'Invalid credentials. Password does not match.',
+      );
     }
 
-    const token = await this.generateToken(user.id, user.email || '', user.role);
+    const token = await this.generateToken(
+      user.id,
+      user.email || '',
+      user.role,
+    );
 
     return {
       token,
@@ -169,7 +189,9 @@ export class AuthService {
     const decoded = await this.firebaseService.verifyIdToken(dto.idToken);
     const email = decoded.email;
     if (!email) {
-      throw new BadRequestException('Google account does not have an associated email address.');
+      throw new BadRequestException(
+        'Google account does not have an associated email address.',
+      );
     }
 
     let user = await this.userRepository.findByEmail(email);
@@ -188,7 +210,11 @@ export class AuthService {
       });
     }
 
-    const token = await this.generateToken(user.id, user.email || '', user.role);
+    const token = await this.generateToken(
+      user.id,
+      user.email || '',
+      user.role,
+    );
 
     return {
       token,
@@ -209,15 +235,18 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const message = 'If an account exists for that email, a password reset link has been sent.';
+    const message =
+      'If an account exists for that email, a password reset link has been sent.';
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL;
-    const publicBaseUrl = (process.env.BACKEND_URL || process.env.FRONTEND_URL)?.replace(/\/+$/, '');
+    const publicBaseUrl = process.env.BACKEND_URL?.replace(/\/+$/, '');
     const devMode =
       process.env.PASSWORD_RESET_DEV_MODE === 'true' &&
       process.env.NODE_ENV === 'development';
     if (!devMode && (!apiKey || !fromEmail || !publicBaseUrl)) {
-      throw new ServiceUnavailableException('Password reset email is not configured.');
+      throw new ServiceUnavailableException(
+        'Password reset email is not configured.',
+      );
     }
 
     const user = await this.userRepository.findByEmail(dto.email);
@@ -238,7 +267,7 @@ export class AuthService {
     }
 
     try {
-      const resetUrl = `${publicBaseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+      const resetUrl = `${publicBaseUrl}/auth/reset-password?token=${encodeURIComponent(token)}`;
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -258,7 +287,9 @@ export class AuthService {
       }
     } catch {
       await this.userRepository.clearPasswordResetToken(user.id, tokenHash);
-      throw new ServiceUnavailableException('Unable to send the password reset email.');
+      throw new ServiceUnavailableException(
+        'Unable to send the password reset email.',
+      );
     }
 
     return { message };
@@ -269,17 +300,29 @@ export class AuthService {
       throw new BadRequestException('A password reset token is required.');
     }
 
-    const tokenHash = crypto.createHash('sha256').update(dto.token).digest('hex');
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(dto.token)
+      .digest('hex');
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const updated = await this.userRepository.resetPasswordWithToken(tokenHash, hashedPassword);
+    const updated = await this.userRepository.resetPasswordWithToken(
+      tokenHash,
+      hashedPassword,
+    );
     if (!updated) {
-      throw new BadRequestException('The password reset token is invalid or expired.');
+      throw new BadRequestException(
+        'The password reset token is invalid or expired.',
+      );
     }
 
     return { message: 'Password successfully reset.' };
   }
 
-  private async generateToken(userId: string, email: string, role: string): Promise<string> {
+  private async generateToken(
+    userId: string,
+    email: string,
+    role: string,
+  ): Promise<string> {
     const payload = { sub: userId, email, role };
     return this.jwtService.signAsync(payload);
   }

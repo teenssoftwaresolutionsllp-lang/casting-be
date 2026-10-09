@@ -50,9 +50,8 @@ PASSWORD_RESET_DEV_MODE=true
 ```
 
 Notes:
-- `BACKEND_URL` is used for mobile reset-link routing.
-- `APP_DEEP_LINK_SCHEME` defines the app deep link, for example `casting://reset-password?...`.
-- `FRONTEND_URL` is still useful for web-based redirects, but mobile apps should not rely on it directly.
+- `BACKEND_URL` is the public backend origin used to serve the browser password-reset page.
+- Password-reset emails link directly to the backend HTML form; `FRONTEND_URL` is not used to construct these links.
 
 ## Installation
 
@@ -410,23 +409,21 @@ Behavior:
 - sends a reset email via Resend
 - in local development mode, returns a `resetToken` if `PASSWORD_RESET_DEV_MODE=true`
 
-### Reset Password Flow for Mobile Apps
-
-The backend now supports a mobile-friendly reset flow.
+### Browser Password Reset Flow
 
 Email link format:
 
 ```text
-https://casting-be.vercel.app/auth/reset-link?token=abc123
+https://casting-be.vercel.app/auth/reset-password?token=<single-use-token>
 ```
 
-This route redirects to the app deep link:
+Opening the link displays a browser form to enter and confirm a new password.
+Submitting the form posts to `POST /auth/reset-password-form`, which applies the
+same token validation and password hashing as the JSON API. The reset token is
+not exposed to third-party resources, and the page disables caching and
+referrers.
 
-```text
-casting://reset-password?token=abc123
-```
-
-The actual API used by the app remains:
+Clients that reset passwords through the API can continue to use:
 
 ```text
 POST /auth/reset-password
@@ -641,7 +638,7 @@ This backend is designed to be deployed to Vercel as a serverless Node API.
 Recommended production flow:
 - backend API deployed separately
 - admin frontend deployed separately
-- backend env includes `BACKEND_URL` and `APP_DEEP_LINK_SCHEME`
+- backend env includes `BACKEND_URL`
 - frontend env points to the backend URL
 
 Example backend URL:
@@ -654,7 +651,7 @@ https://casting-be.vercel.app
 
 - Admin and user authentication are completely separate.
 - Artists can register and fill profile information later.
-- Password reset uses a token redirect flow for mobile deep links.
+- Password reset emails open a backend-hosted HTML form; submitting it updates the password through the existing token validation flow.
 - Swagger docs need static assets to be served correctly in production deployments.
 
 ## License

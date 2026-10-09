@@ -1,4 +1,7 @@
-import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
 jest.mock('./firebase.service', () => ({ FirebaseService: class {} }));
 import { AuthService } from './auth.service';
@@ -7,6 +10,7 @@ const originalFetch = global.fetch;
 const originalEnvironment = {
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
+  BACKEND_URL: process.env.BACKEND_URL,
   FRONTEND_URL: process.env.FRONTEND_URL,
   NODE_ENV: process.env.NODE_ENV,
   PASSWORD_RESET_DEV_MODE: process.env.PASSWORD_RESET_DEV_MODE,
@@ -20,7 +24,10 @@ describe('AuthService - Password Reset', () => {
   beforeEach(() => {
     process.env.RESEND_API_KEY = 'test-resend-key';
     process.env.RESEND_FROM_EMAIL = 'Casting <no-reply@example.com>';
+    process.env.BACKEND_URL = 'https://casting-api.example.com/';
     process.env.FRONTEND_URL = 'https://casting.example.com/';
+    process.env.NODE_ENV = 'test';
+    process.env.PASSWORD_RESET_DEV_MODE = 'false';
 
     mockUserRepo = {
       findByEmail: jest.fn(),
@@ -49,9 +56,14 @@ describe('AuthService - Password Reset', () => {
   });
 
   it('sends a single-use reset link and stores only its hash', async () => {
-    mockUserRepo.findByEmail.mockResolvedValue({ id: 'user-1', email: 'user@example.com' });
+    mockUserRepo.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+    });
 
-    const result = await authService.forgotPassword({ email: 'user@example.com' });
+    const result = await authService.forgotPassword({
+      email: 'user@example.com',
+    });
 
     expect(result.message).toContain('If an account exists');
     expect(mockUserRepo.setPasswordResetToken).toHaveBeenCalledWith(
@@ -66,7 +78,7 @@ describe('AuthService - Password Reset', () => {
       throw new Error('Reset email did not contain a token.');
     }
     expect(resetUrl.origin + resetUrl.pathname).toBe(
-      'https://casting.example.com/auth/reset-link',
+      'https://casting-api.example.com/auth/reset-password',
     );
     expect(token).toMatch(/^[a-f0-9]{64}$/);
     expect(mockUserRepo.setPasswordResetToken.mock.calls[0][1]).toBe(
@@ -75,10 +87,27 @@ describe('AuthService - Password Reset', () => {
     expect(body.to).toEqual(['user@example.com']);
   });
 
+  it('requires a backend URL rather than linking to the frontend app', async () => {
+    delete process.env.BACKEND_URL;
+    mockUserRepo.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+    });
+
+    await expect(
+      authService.forgotPassword({ email: 'user@example.com' }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(mockUserRepo.findByEmail).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('returns the same response for an unknown email without sending mail', async () => {
     mockUserRepo.findByEmail.mockResolvedValue(null);
 
-    const result = await authService.forgotPassword({ email: 'unknown@example.com' });
+    const result = await authService.forgotPassword({
+      email: 'unknown@example.com',
+    });
 
     expect(result.message).toContain('If an account exists');
     expect(fetchMock).not.toHaveBeenCalled();
@@ -87,9 +116,14 @@ describe('AuthService - Password Reset', () => {
   it('returns a reset token for Swagger testing in development mode', async () => {
     process.env.NODE_ENV = 'development';
     process.env.PASSWORD_RESET_DEV_MODE = 'true';
-    mockUserRepo.findByEmail.mockResolvedValue({ id: 'user-1', email: 'user@example.com' });
+    mockUserRepo.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+    });
 
-    const result = await authService.forgotPassword({ email: 'user@example.com' });
+    const result = await authService.forgotPassword({
+      email: 'user@example.com',
+    });
 
     const resetToken = result.resetToken;
     if (typeof resetToken !== 'string') {
@@ -107,9 +141,14 @@ describe('AuthService - Password Reset', () => {
   it('does not expose reset tokens when running in production', async () => {
     process.env.NODE_ENV = 'production';
     process.env.PASSWORD_RESET_DEV_MODE = 'true';
-    mockUserRepo.findByEmail.mockResolvedValue({ id: 'user-1', email: 'user@example.com' });
+    mockUserRepo.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+    });
 
-    const result = await authService.forgotPassword({ email: 'user@example.com' });
+    const result = await authService.forgotPassword({
+      email: 'user@example.com',
+    });
 
     expect(result).not.toHaveProperty('resetToken');
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -118,16 +157,24 @@ describe('AuthService - Password Reset', () => {
   it('does not expose reset tokens when NODE_ENV is unset', async () => {
     delete process.env.NODE_ENV;
     process.env.PASSWORD_RESET_DEV_MODE = 'true';
-    mockUserRepo.findByEmail.mockResolvedValue({ id: 'user-1', email: 'user@example.com' });
+    mockUserRepo.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+    });
 
-    const result = await authService.forgotPassword({ email: 'user@example.com' });
+    const result = await authService.forgotPassword({
+      email: 'user@example.com',
+    });
 
     expect(result).not.toHaveProperty('resetToken');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('clears the token and reports an email delivery failure', async () => {
-    mockUserRepo.findByEmail.mockResolvedValue({ id: 'user-1', email: 'user@example.com' });
+    mockUserRepo.findByEmail.mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+    });
     fetchMock.mockResolvedValue({ ok: false, status: 500 });
 
     await expect(
@@ -159,7 +206,10 @@ describe('AuthService - Password Reset', () => {
     mockUserRepo.resetPasswordWithToken.mockResolvedValue(false);
 
     await expect(
-      authService.resetPassword({ token: 'a'.repeat(64), password: 'NewPassword123!' }),
+      authService.resetPassword({
+        token: 'a'.repeat(64),
+        password: 'NewPassword123!',
+      }),
     ).rejects.toThrow(BadRequestException);
   });
 });
