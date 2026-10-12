@@ -2,8 +2,10 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
+  ParseUUIDPipe,
   Query,
   UseGuards,
   HttpCode,
@@ -43,6 +45,13 @@ export class VideoController {
   @ApiResponse({ status: 200, description: 'Video details retrieved.' })
   async findOne(@CurrentUser() user: any, @Param('id') id: string) {
     return this.videoService.findOne(id, user.sub);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete your own video or photo post' })
+  @ApiResponse({ status: 200, description: 'Post deleted.' })
+  async delete(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) id: string) {
+    return this.videoService.deleteVideo(id, user.sub);
   }
 
   @Post(':id/like')

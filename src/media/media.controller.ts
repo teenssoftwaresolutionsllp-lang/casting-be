@@ -7,6 +7,9 @@ import {
   BadRequestException,
   Body,
   UseGuards,
+  Delete,
+  Param,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -107,6 +110,13 @@ export class PhotosController {
   async getPhotos(@CurrentUser() user: any) {
     // Photos are stored in the videos table with category = 'Photos'
     return this.videoService.findAll(user.sub, 'Photos');
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete your own photo post' })
+  @ApiResponse({ status: 200, description: 'Photo post deleted.' })
+  async deletePhoto(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) id: string) {
+    return this.videoService.deleteVideo(id, user.sub);
   }
 }
 

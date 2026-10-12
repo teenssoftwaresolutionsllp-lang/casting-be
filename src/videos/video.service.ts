@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { VideoRepository } from './video.repository';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -72,6 +72,22 @@ export class VideoService {
       liked,
       createdAt: v.createdAt,
     };
+  }
+
+  async deleteVideo(videoId: string, userId: string) {
+    const video = await this.videoRepository.findById(videoId);
+    if (!video) {
+      throw new NotFoundException(`Video with ID ${videoId} not found.`);
+    }
+    if (video.creatorId !== userId) {
+      throw new ForbiddenException('You can only delete your own posts.');
+    }
+
+    const deleted = await this.videoRepository.deleteByIdAndCreator(videoId, userId);
+    if (!deleted) {
+      throw new NotFoundException(`Video with ID ${videoId} not found.`);
+    }
+    return { deleted: true };
   }
 
   async toggleLikeVideo(videoId: string, userId: string) {

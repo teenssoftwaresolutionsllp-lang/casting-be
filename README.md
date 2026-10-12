@@ -586,6 +586,18 @@ Video endpoint:
 POST /videos/upload
 ```
 
+Video and photo posts can be deleted by their creator:
+
+```text
+DELETE /videos/:id
+DELETE /photos/:id
+```
+
+Both endpoints require a JWT and return `{ "deleted": true }`. Only the user
+who created the post can delete it; attempts by other users return `403`, and
+unknown IDs return `404`. Photo posts are stored in the videos table, so the
+video endpoint can also delete a photo post by ID.
+
 ## Stories API
 
 Stories remain active for 24 hours and allow image or video uploads.

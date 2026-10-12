@@ -40,6 +40,14 @@ export class VideoRepository {
     return results[0] || null;
   }
 
+  async deleteByIdAndCreator(id: string, creatorId: string): Promise<boolean> {
+    const deleted = await this.db
+      .delete(schema.videos)
+      .where(and(eq(schema.videos.id, id), eq(schema.videos.creatorId, creatorId)))
+      .returning({ id: schema.videos.id });
+    return deleted.length > 0;
+  }
+
   async findAll(category?: string) {
     const query = this.db
       .select({
