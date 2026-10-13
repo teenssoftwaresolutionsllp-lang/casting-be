@@ -45,6 +45,7 @@ export class UserService {
       return value !== null && value !== undefined && value !== '' &&
         (!Array.isArray(value) || value.length > 0);
     });
+    
     const totalFields = this.profileFields.length;
     const completed = completedFields.length;
 

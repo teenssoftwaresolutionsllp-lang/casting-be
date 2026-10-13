@@ -232,7 +232,7 @@ export const auditions = pgTable('auditions', {
   roleAgeMax: integer('role_age_max'),
   roleGender: text('role_gender'),
   location: text('location').notNull(),
-  pay: text('pay').notNull(),
+  pay: text('pay'),
   deadline: text('deadline').notNull(),
   lang: text('lang').notNull(),
   desc: text('desc').notNull(),

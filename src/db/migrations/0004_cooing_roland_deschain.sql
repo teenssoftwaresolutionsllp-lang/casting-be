@@ -1,0 +1,1 @@
+ALTER TABLE "auditions" ALTER COLUMN "pay" DROP NOT NULL;

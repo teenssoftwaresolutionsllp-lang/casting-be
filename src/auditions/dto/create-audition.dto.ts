@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsInt, IsNotEmpty, IsString, Max, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateAuditionDto {
   @ApiProperty({ example: 'Action Movie 2026', description: 'Casting call title' })
@@ -42,10 +42,10 @@ export class CreateAuditionDto {
   @IsNotEmpty()
   location: string;
 
-  @ApiProperty({ example: '₹50,000 - ₹2,00,000', description: 'Compensation package detail' })
+  @ApiPropertyOptional({ example: '₹50,000 - ₹2,00,000', description: 'Compensation package detail' })
   @IsString()
-  @IsNotEmpty()
-  pay: string;
+  @IsOptional()
+  pay?: string;
 
   @ApiProperty({ example: '2026-12-15', description: 'Submission deadline date string' })
   @IsString()
