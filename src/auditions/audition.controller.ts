@@ -32,7 +32,7 @@ export class AuditionController {
 
   @Get()
   @ApiOperation({ summary: 'Retrieve active audition casting calls list' })
-  @ApiQuery({ name: 'category', required: false, description: 'Filter auditions by category (Film, Ad, Dancer, TV)' })
+  @ApiQuery({ name: 'category', required: false, description: 'Filter auditions by cinema craft category' })
   @ApiResponse({ status: 200, description: 'Returns list of auditions.' })
   async findAll(@CurrentUser() user: any, @Query('category') category?: string) {
     return this.auditionService.findAll(user.sub, category);

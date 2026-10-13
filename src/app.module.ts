@@ -14,6 +14,7 @@ import { NotificationModule } from './notifications/notification.module';
 import { StoriesModule } from './stories/stories.module';
 import { ActivityLogModule } from './activity-log/activity-log.module';
 import { AdminModule } from './admin/admin.module';
+import { FaceModule } from './face/face.module';
 
 @Module({
   imports: [
@@ -45,7 +46,7 @@ import { AdminModule } from './admin/admin.module';
     StoriesModule,
     ActivityLogModule,
     AdminModule,
+    FaceModule,
   ],
 })
 export class AppModule {}
-

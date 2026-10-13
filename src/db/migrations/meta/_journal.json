@@ -15,6 +15,20 @@
       "when": 1791442937336,
       "tag": "0001_freezing_midnight",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791785096799,
+      "tag": "0002_purple_the_santerians",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791872970700,
+      "tag": "0003_woozy_talkback",
+      "breakpoints": true
     }
   ]
 }

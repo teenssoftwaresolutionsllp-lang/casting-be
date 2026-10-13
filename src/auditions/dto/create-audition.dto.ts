@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsString, Max, Min } from 'class-validator';
 
 export class CreateAuditionDto {
   @ApiProperty({ example: 'Action Movie 2026', description: 'Casting call title' })
@@ -7,15 +7,35 @@ export class CreateAuditionDto {
   @IsNotEmpty()
   title: string;
 
-  @ApiProperty({ example: 'Film', description: 'Audition category, e.g., Film, Ad, Dancer, TV' })
+  @ApiProperty({
+    example: 'Direction',
+    description: 'One of the 24 cinema crafts (e.g., Direction or Story / Scriptwriting)',
+  })
   @IsString()
   @IsNotEmpty()
   category: string;
 
-  @ApiProperty({ example: 'Hero (Male, 25-35)', description: 'Seeking role description' })
+  @ApiProperty({ example: 'Lead performer', description: 'Role being cast' })
   @IsString()
   @IsNotEmpty()
   role: string;
+
+  @ApiProperty({ example: 25, description: 'Minimum age sought for the role' })
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  roleAgeMin: number;
+
+  @ApiProperty({ example: 35, description: 'Maximum age sought for the role' })
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  roleAgeMax: number;
+
+  @ApiProperty({ example: 'Male', enum: ['Male', 'Female'], description: 'Gender sought for the role' })
+  @IsString()
+  @IsIn(['Male', 'Female'])
+  roleGender: string;
 
   @ApiProperty({ example: 'Mumbai', description: 'Shoot/audition location' })
   @IsString()

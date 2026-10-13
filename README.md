@@ -47,11 +47,24 @@ FRONTEND_URL=http://localhost:5173
 APP_DEEP_LINK_SCHEME=casting
 
 PASSWORD_RESET_DEV_MODE=true
+
+FACE_ENCRYPTION_KEYS={"1":"<base64-encoded-32-byte-key>"}
+FACE_ENCRYPTION_KEY_VERSION=1
+FACE_EMBEDDING_LENGTH=512
+FACE_DISTANCE_THRESHOLD=0.6
 ```
 
 Notes:
 - `BACKEND_URL` is the public backend origin used to serve the browser password-reset page.
 - Password-reset emails link directly to the backend HTML form; `FRONTEND_URL` is not used to construct these links.
+- Face verification requires a JSON key ring in `FACE_ENCRYPTION_KEYS`, keyed by
+  integer key version and containing Base64-encoded 32-byte AES keys. Keep
+  previous keys in the ring while templates encrypted with those versions
+  remain; `FACE_ENCRYPTION_KEY_VERSION` selects the active key.
+- Set `FACE_EMBEDDING_LENGTH` to the embedding dimension produced by the
+  client-side model and calibrate `FACE_DISTANCE_THRESHOLD` against that model.
+  The server compares Euclidean distance and accepts distances at or below the
+  threshold.
 
 ## Installation
 
@@ -608,6 +621,45 @@ Endpoints:
 - `GET /stories/feed`
 - `POST /stories/:id/views`
 - `DELETE /stories/:id`
+
+## Face Verification API
+
+Face verification is an optional second factor for JWT-authenticated users.
+Apply the exported `FaceVerifiedGuard` and `@RequireFaceVerification('purpose')`
+to routes that need it, alongside the route's normal JWT and role guards. The
+guard requires an `X-Face-Token` issued to the same user for that exact purpose.
+
+All routes below require `Authorization: Bearer <JWT>`:
+
+- `POST /face/consent` with `{ "version": "consent-version" }` records
+  biometric consent.
+- `POST /face/enroll` with
+  `{ "embedding": [0.1, 0.2], "modelVersion": "model-v1", "sampleCount": 3 }`
+  stores the embedding encrypted with AES-256-GCM. It requires consent and a
+  bearer JWT issued within the previous five minutes. The embedding length must
+  equal `FACE_EMBEDDING_LENGTH`.
+- `POST /face/challenge` with `{ "purpose": "sensitive-action" }` returns
+  `{ "challengeId": "...", "expiresAt": "..." }`. The challenge is single-use
+  and expires after 60 seconds.
+- `POST /face/verify` with
+  `{ "challengeId": "...", "embedding": [0.1, 0.2], "livenessPassed": true, "deviceId": "..." }`
+  returns `{ "faceToken": "...", "expiresIn": 300 }` on success. The token is
+  valid for five minutes and is bound to the request user and challenge purpose.
+- `GET /face/status` reports enrollment and latest consent state.
+- `DELETE /face/enroll` hard-deletes the user's face templates and writes an
+  activity-log audit entry.
+
+Verification is limited to 10 attempts per user and IP per minute. Five
+consecutive failed attempts lock verification for 15 minutes. Generic response
+codes include `FACE_NOT_ENROLLED`, `FACE_MISMATCH`, `LIVENESS_FAILED`,
+`CHALLENGE_EXPIRED`, and `FACE_LOCKED`. Face embeddings and decrypted templates
+are never logged.
+
+`livenessPassed` is a client-provided assertion in this API contract; the
+backend rejects `false` but does not independently validate liveness or a
+device-attested proof. A production client must use a trustworthy liveness
+implementation and should add server-verifiable attestation if clients are
+considered untrusted.
 
 ## Core Database Tables
 

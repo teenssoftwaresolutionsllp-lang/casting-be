@@ -1,5 +1,6 @@
-import { pgTable, uuid, text, integer, boolean, timestamp, primaryKey, jsonb, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, integer, boolean, timestamp, primaryKey, jsonb, index, real, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 // ==========================================
 // USERS TABLE
@@ -67,6 +68,63 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// ==========================================
+// FACE VERIFICATION
+// ==========================================
+export const faceTemplates = pgTable('face_templates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  templateEncrypted: text('template_encrypted').notNull(),
+  iv: text('iv').notNull(),
+  authTag: text('auth_tag').notNull(),
+  keyVersion: integer('key_version').notNull(),
+  modelVersion: text('model_version').notNull(),
+  status: text('status').default('active').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  revokedAt: timestamp('revoked_at'),
+}, (table) => [
+  uniqueIndex('face_templates_one_active_per_user_idx')
+    .on(table.userId)
+    .where(sql`${table.status} = 'active'`),
+  index('face_templates_user_status_idx').on(table.userId, table.status),
+]);
+
+export const faceChallenges = pgTable('face_challenges', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  nonce: text('nonce').notNull(),
+  purpose: text('purpose').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+}, (table) => [
+  index('face_challenges_user_expiry_idx').on(table.userId, table.expiresAt),
+]);
+
+export const faceAttempts = pgTable('face_attempts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  challengeId: uuid('challenge_id').references(() => faceChallenges.id, { onDelete: 'set null' }),
+  purpose: text('purpose'),
+  result: text('result').notNull(),
+  similarityScore: real('similarity_score'),
+  livenessPassed: boolean('liveness_passed').notNull(),
+  deviceId: text('device_id'),
+  ip: text('ip'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('face_attempts_user_created_idx').on(table.userId, table.createdAt),
+  index('face_attempts_user_ip_created_idx').on(table.userId, table.ip, table.createdAt),
+]);
+
+export const biometricConsents = pgTable('biometric_consents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  consentVersion: text('consent_version').notNull(),
+  acceptedAt: timestamp('accepted_at').defaultNow().notNull(),
+}, (table) => [
+  index('biometric_consents_user_accepted_idx').on(table.userId, table.acceptedAt),
+]);
 
 // ==========================================
 // STORIES (24-hour media posts)
@@ -168,8 +226,11 @@ export const auditions = pgTable('auditions', {
   id: uuid('id').defaultRandom().primaryKey(),
   creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   title: text('title').notNull(),
-  category: text('category').notNull(), // 'Film' | 'Ad' | 'Dancer' | 'TV'
+  category: text('category').notNull(), // Cinema craft category
   role: text('role').notNull(),
+  roleAgeMin: integer('role_age_min'),
+  roleAgeMax: integer('role_age_max'),
+  roleGender: text('role_gender'),
   location: text('location').notNull(),
   pay: text('pay').notNull(),
   deadline: text('deadline').notNull(),
