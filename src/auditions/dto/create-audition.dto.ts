@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import { CINEMA_CRAFTS } from '../../common/cinema-crafts';
 
 export class CreateAuditionDto {
   @ApiProperty({ example: 'Action Movie 2026', description: 'Casting call title' })
@@ -8,8 +9,9 @@ export class CreateAuditionDto {
   title: string;
 
   @ApiProperty({
-    example: 'Direction',
-    description: 'One of the 24 cinema crafts (e.g., Direction or Story / Scriptwriting)',
+    example: 'Acting',
+    enum: CINEMA_CRAFTS,
+    description: 'Cinema craft category for this audition',
   })
   @IsString()
   @IsNotEmpty()

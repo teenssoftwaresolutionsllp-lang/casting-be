@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { CINEMA_CRAFTS } from '../common/cinema-crafts';
 
 @ApiTags('Users & Profile')
 @ApiBearerAuth()
@@ -44,7 +45,12 @@ export class UserController {
   @Get('users/explore')
   @ApiOperation({ summary: 'Search and browse casting artists and talent' })
   @ApiQuery({ name: 'query', required: false, description: 'Filter creators by name' })
-  @ApiQuery({ name: 'category', required: false, description: 'Filter creators by category (e.g., Actor, Model, Dancer)' })
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    enum: CINEMA_CRAFTS,
+    description: 'Filter creators by cinema craft category; omit or use All for every category',
+  })
   @ApiResponse({ status: 200, description: 'Returns matching talent lists.' })
   async explore(
     @CurrentUser() user: any,

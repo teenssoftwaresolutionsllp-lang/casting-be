@@ -15,6 +15,7 @@ import { AuditionService } from './audition.service';
 import { CreateAuditionDto } from './dto/create-audition.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { CINEMA_CRAFTS } from '../common/cinema-crafts';
 
 @ApiTags('Auditions')
 @ApiBearerAuth()
@@ -32,7 +33,12 @@ export class AuditionController {
 
   @Get()
   @ApiOperation({ summary: 'Retrieve active audition casting calls list' })
-  @ApiQuery({ name: 'category', required: false, description: 'Filter auditions by cinema craft category' })
+  @ApiQuery({
+    name: 'category',
+    required: false,
+    enum: CINEMA_CRAFTS,
+    description: 'Filter auditions by cinema craft category; omit or use All for every category',
+  })
   @ApiResponse({ status: 200, description: 'Returns list of auditions.' })
   async findAll(@CurrentUser() user: any, @Query('category') category?: string) {
     return this.auditionService.findAll(user.sub, category);
