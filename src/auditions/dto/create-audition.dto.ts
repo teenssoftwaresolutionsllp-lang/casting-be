@@ -48,7 +48,7 @@ export class CreateAuditionDto {
   @ApiProperty({ example: 'Mumbai', description: 'Shoot/audition location' })
   @IsString()
   @IsNotEmpty()
-  location: string | undefined;
+  location!: string;
 
   @ApiPropertyOptional({ example: '₹50,000 - ₹2,00,000', description: 'Compensation package detail' })
   @IsString()
@@ -58,15 +58,15 @@ export class CreateAuditionDto {
   @ApiProperty({ example: '2026-12-15', description: 'Submission deadline date string' })
   @IsString()
   @IsNotEmpty()
-  deadline: string | undefined;
+  deadline!: string;
 
   @ApiProperty({ example: 'Hindi', description: 'Language requirements' })
   @IsString()
   @IsNotEmpty()
-  lang: string | undefined;
+  lang!: string;
 
   @ApiProperty({ example: 'Seeking a passionate and physically fit actor to portray the principal protagonist.', description: 'Detailed audition description' })
   @IsString()
   @IsNotEmpty()
-  desc: string | undefined;
+  desc!: string;
 }
