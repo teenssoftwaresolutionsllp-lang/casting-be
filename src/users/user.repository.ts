@@ -25,6 +25,14 @@ export class UserRepository {
     return results[0] || null;
   }
 
+  async deleteById(id: string): Promise<boolean> {
+    const [deleted] = await this.db
+      .delete(schema.users)
+      .where(eq(schema.users.id, id))
+      .returning({ id: schema.users.id });
+    return Boolean(deleted);
+  }
+
   async findByEmail(email: string) {
     const results = await this.db
       .select()

@@ -11,6 +11,7 @@ import { LoginDto } from './dto/login.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { FirebaseService } from './firebase.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
@@ -316,6 +317,36 @@ export class AuthService {
     }
 
     return { message: 'Password successfully reset.' };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    if (dto.newPassword !== dto.confirmNewPassword) {
+      throw new BadRequestException('New password and confirmation do not match.');
+    }
+
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User account could not be verified.');
+    }
+
+    const passwordMatches = await bcrypt.compare(dto.oldPassword, user.password);
+    if (!passwordMatches) {
+      throw new UnauthorizedException('The current password is incorrect.');
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+    await this.userRepository.update(userId, { password: hashedPassword });
+
+    return { message: 'Password successfully changed.' };
+  }
+
+  async deleteAccount(userId: string) {
+    const deleted = await this.userRepository.deleteById(userId);
+    if (!deleted) {
+      throw new UnauthorizedException('The authenticated account no longer exists.');
+    }
+
+    return { message: 'Account and associated data successfully deleted.' };
   }
 
   private async generateToken(

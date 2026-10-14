@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
   Post,
   Body,
   HttpCode,
@@ -8,8 +9,9 @@ import {
   Get,
   Query,
   Res,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { type Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -17,6 +19,9 @@ import { LoginDto } from './dto/login.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { CurrentUser } from './current-user.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -193,6 +198,33 @@ export class AuthController {
   })
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change the password for the authenticated user' })
+  @ApiResponse({ status: 200, description: 'Password successfully changed.' })
+  @ApiResponse({ status: 401, description: 'The current password is incorrect.' })
+  @ApiResponse({ status: 400, description: 'The new password confirmation does not match.' })
+  async changePassword(
+    @CurrentUser() user: any,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(user.sub, dto);
+  }
+
+  @Delete('account')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Permanently delete the authenticated account and associated data',
+  })
+  @ApiResponse({ status: 200, description: 'Account and associated data deleted.' })
+  @ApiResponse({ status: 401, description: 'Authentication is required.' })
+  async deleteAccount(@CurrentUser() user: any) {
+    return this.authService.deleteAccount(user.sub);
   }
 
   private isResetToken(token: unknown): token is string {
