@@ -63,4 +63,27 @@ export class ApplicationService {
 
     return this.applicationRepository.updateStatus(id, dto.status, dto.details);
   }
+
+  async getAuditionApplicants(auditionId: string, requesterId: string) {
+    const audition = await this.auditionRepository.findById(auditionId);
+    if (!audition) {
+      throw new NotFoundException(`Audition with ID ${auditionId} not found.`);
+    }
+
+    // Only the audition creator (organizer) can view applicants
+    if (audition.creatorId !== requesterId) {
+      throw new ForbiddenException('Only the audition organizer can view applicants.');
+    }
+
+    const applicants = await this.applicationRepository.findByAuditionId(auditionId);
+
+    return {
+      auditionId: audition.id,
+      auditionTitle: audition.title,
+      auditionCategory: audition.category,
+      auditionRole: audition.role,
+      totalApplicants: applicants.length,
+      applicants,
+    };
+  }
 }

@@ -81,6 +81,67 @@ export class ApplicationRepository {
     return updated;
   }
 
+  async findByAuditionId(auditionId: string) {
+    return this.db
+      .select({
+        // Application fields
+        id: schema.applications.id,
+        auditionId: schema.applications.auditionId,
+        coverLetter: schema.applications.coverLetter,
+        status: schema.applications.status,
+        details: schema.applications.details,
+        appliedAt: schema.applications.createdAt,
+        // Applicant profile fields
+        applicant: {
+          id: schema.users.id,
+          fullName: schema.users.fullName,
+          email: schema.users.email,
+          mobile: schema.users.mobile,
+          trkCode: schema.users.trkCode,
+          profilePhoto: schema.users.profilePhoto,
+          role: schema.users.role,
+          gender: schema.users.gender,
+          age: schema.users.age,
+          category: schema.users.category,
+          experience: schema.users.experience,
+          skills: schema.users.skills,
+          languages: schema.users.languages,
+          qualification: schema.users.qualification,
+          occupation: schema.users.occupation,
+          height: schema.users.height,
+          weight: schema.users.weight,
+          bodyType: schema.users.bodyType,
+          skinTone: schema.users.skinTone,
+          hairColor: schema.users.hairColor,
+          eyeColor: schema.users.eyeColor,
+          preferredRole: schema.users.preferredRole,
+          availableFor: schema.users.availableFor,
+          travelAvailability: schema.users.travelAvailability,
+          nightShoots: schema.users.nightShoots,
+          relocate: schema.users.relocate,
+          headshot: schema.users.headshot,
+          fullBody: schema.users.fullBody,
+          introVideo: schema.users.introVideo,
+          previousWork: schema.users.previousWork,
+          instagram: schema.users.instagram,
+          youtube: schema.users.youtube,
+          imdb: schema.users.imdb,
+          website: schema.users.website,
+          resume: schema.users.resume,
+          awards: schema.users.awards,
+          bio: schema.users.bio,
+          country: schema.users.country,
+          state: schema.users.state,
+          city: schema.users.city,
+          stageName: schema.users.stageName,
+        },
+      })
+      .from(schema.applications)
+      .innerJoin(schema.users, eq(schema.applications.applicantId, schema.users.id))
+      .where(eq(schema.applications.auditionId, auditionId))
+      .orderBy(desc(schema.applications.createdAt));
+  }
+
   async delete(id: string) {
     await this.db.delete(schema.applications).where(eq(schema.applications.id, id));
   }

@@ -60,4 +60,15 @@ export class ApplicationController {
   ) {
     return this.applicationService.updateStatus(id, user.sub, dto);
   }
+
+  @Get('auditions/:id/applications')
+  @ApiOperation({ summary: 'Get all applicants for an audition with their full profile (organizer only)' })
+  @ApiResponse({ status: 200, description: 'Returns list of applicants with complete user profile details.' })
+  @ApiResponse({ status: 403, description: 'Only the audition organizer can view applicants.' })
+  async getAuditionApplicants(
+    @CurrentUser() user: any,
+    @Param('id') auditionId: string,
+  ) {
+    return this.applicationService.getAuditionApplicants(auditionId, user.sub);
+  }
 }
