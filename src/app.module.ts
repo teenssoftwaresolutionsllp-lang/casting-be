@@ -15,6 +15,7 @@ import { StoriesModule } from './stories/stories.module';
 import { ActivityLogModule } from './activity-log/activity-log.module';
 import { AdminModule } from './admin/admin.module';
 import { FaceModule } from './face/face.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { FaceModule } from './face/face.module';
     ActivityLogModule,
     AdminModule,
     FaceModule,
+    StatsModule,
   ],
 })
 export class AppModule {}

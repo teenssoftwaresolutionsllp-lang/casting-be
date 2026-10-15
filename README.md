@@ -120,6 +120,20 @@ Use it to:
 - view request/response payloads
 - authorize with JWTs for protected routes
 
+### Live platform statistics
+
+`GET /stats` is a public endpoint that returns current aggregate counts for
+users, crafts, gender, states, auditions, applications, media posts, stories,
+and recorded views. `updatedAt` indicates when the snapshot was generated;
+counts are queried from the database for each request.
+
+Some metrics are not represented in the current data model and are returned as
+`null` rather than estimated: audition live/closed totals, image-versus-video
+post totals, unique reach, and profile views. Craft counts reflect the
+category saved on user profiles; they do not indicate approval status.
+`totalMediaPosts` counts records in the shared media table, which includes
+photo posts as well as videos.
+
 ### Admin user management
 
 All `/admin/users` endpoints below require `Authorization: Bearer <admin-token>`.
