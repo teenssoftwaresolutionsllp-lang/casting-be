@@ -21,16 +21,7 @@ export class VideoService {
   }
 
   async findAll(userId: string, category?: string) {
-    const list = await this.videoRepository.findAll(category);
-
-    if (!list.length) {
-      return [];
-    }
-
-    const likedMap = await this.videoRepository.getLikedVideoIdsByUser(
-      userId,
-      list.map((v) => v.id),
-    );
+    const list = await this.videoRepository.findAllWithUserLike(userId, category);
 
     return list.map((v) => ({
       id: v.id,
@@ -45,7 +36,7 @@ export class VideoService {
       thumb: v.thumb,
       likesCount: v.likesCount,
       viewsCount: v.viewsCount,
-      liked: !!likedMap[v.id],
+      liked: !!v.likedUserId,
       createdAt: v.createdAt,
     }));
   }
@@ -102,8 +93,19 @@ export class VideoService {
       await this.videoRepository.removeLike(videoId, userId);
       return { liked: false, likesCount: Math.max(0, video.likesCount - 1) };
     } else {
-      await this.videoRepository.addLike(videoId, userId);
-      return { liked: true, likesCount: video.likesCount + 1 };
+      const created = await this.videoRepository.addLike(videoId, userId, {
+        userId: video.creatorId,
+        actorId: userId,
+        type: 'POST_LIKED',
+        title: 'New like',
+        text: 'Someone liked your post.',
+        entityType: 'VIDEO',
+        entityId: videoId,
+      });
+      return {
+        liked: true,
+        likesCount: video.likesCount + (created ? 1 : 0),
+      };
     }
   }
 
@@ -118,16 +120,7 @@ export class VideoService {
 
   // Comments business logic
   async getComments(videoId: string, userId: string) {
-    const commentsList = await this.videoRepository.getComments(videoId);
-
-    if (!commentsList.length) {
-      return [];
-    }
-
-    const likedCommentMap = await this.videoRepository.getLikedCommentIdsByUser(
-      userId,
-      commentsList.map((c) => c.id),
-    );
+    const commentsList = await this.videoRepository.getCommentsWithUserLike(videoId, userId);
 
     return commentsList.map((c) => ({
       id: c.id,
@@ -138,7 +131,7 @@ export class VideoService {
       time: 'Just now',
       author: c.author || 'Anonymous',
       authorPic: c.authorPic || this.defaultProfilePic,
-      liked: !!likedCommentMap[c.id],
+      liked: !!c.likedUserId,
       createdAt: c.createdAt,
     }));
   }
@@ -149,13 +142,22 @@ export class VideoService {
       throw new NotFoundException(`Video with ID ${videoId} not found.`);
     }
 
-    const created = await this.videoRepository.createComment({
-      videoId,
-      userId,
-      text: dto.text,
-    });
-
-    return created;
+    return this.videoRepository.createComment(
+      {
+        videoId,
+        userId,
+        text: dto.text,
+      },
+      {
+        userId: video.creatorId,
+        actorId: userId,
+        type: 'POST_COMMENTED',
+        title: 'New comment',
+        text: 'Someone commented on your post.',
+        entityType: 'VIDEO',
+        entityId: videoId,
+      },
+    );
   }
 
   async toggleLikeComment(commentId: string, userId: string) {

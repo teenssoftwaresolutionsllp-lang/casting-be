@@ -6,12 +6,20 @@ describe('VideoService', () => {
   let repository: {
     findById: jest.Mock;
     deleteByIdAndCreator: jest.Mock;
+    hasLiked: jest.Mock;
+    addLike: jest.Mock;
+    removeLike: jest.Mock;
+    createComment: jest.Mock;
   };
 
   beforeEach(() => {
     repository = {
       findById: jest.fn(),
       deleteByIdAndCreator: jest.fn(),
+      hasLiked: jest.fn(),
+      addLike: jest.fn(),
+      removeLike: jest.fn(),
+      createComment: jest.fn(),
     };
     service = new VideoService(repository as any);
   });
@@ -40,5 +48,79 @@ describe('VideoService', () => {
       NotFoundException,
     );
     expect(repository.deleteByIdAndCreator).not.toHaveBeenCalled();
+  });
+
+  it('notifies the post owner when a new like is added', async () => {
+    repository.findById.mockResolvedValue({
+      creatorId: 'owner-id',
+      likesCount: 4,
+    });
+    repository.hasLiked.mockResolvedValue(false);
+    repository.addLike.mockResolvedValue(true);
+
+    await expect(service.toggleLikeVideo('post-id', 'actor-id')).resolves.toEqual({
+      liked: true,
+      likesCount: 5,
+    });
+    expect(repository.addLike).toHaveBeenCalledWith('post-id', 'actor-id', {
+      userId: 'owner-id',
+      actorId: 'actor-id',
+      type: 'POST_LIKED',
+      title: 'New like',
+      text: 'Someone liked your post.',
+      entityType: 'VIDEO',
+      entityId: 'post-id',
+    });
+  });
+
+  it('does not notify for an unlike', async () => {
+    repository.findById.mockResolvedValue({
+      creatorId: 'owner-id',
+      likesCount: 1,
+    });
+    repository.hasLiked.mockResolvedValue(true);
+
+    await service.toggleLikeVideo('post-id', 'actor-id');
+
+    expect(repository.addLike).not.toHaveBeenCalled();
+  });
+
+  it('notifies the post owner when a comment is created', async () => {
+    repository.findById.mockResolvedValue({ creatorId: 'owner-id' });
+    repository.createComment.mockResolvedValue({ id: 'comment-id' });
+
+    await service.postComment('post-id', 'actor-id', { text: 'Nice work' });
+
+    expect(repository.createComment).toHaveBeenCalledWith(
+      { videoId: 'post-id', userId: 'actor-id', text: 'Nice work' },
+      {
+        userId: 'owner-id',
+        actorId: 'actor-id',
+        type: 'POST_COMMENTED',
+        title: 'New comment',
+        text: 'Someone commented on your post.',
+        entityType: 'VIDEO',
+        entityId: 'post-id',
+      },
+    );
+  });
+
+  it('does not notify when a concurrent like was already inserted', async () => {
+    repository.findById.mockResolvedValue({
+      creatorId: 'owner-id',
+      likesCount: 4,
+    });
+    repository.hasLiked.mockResolvedValue(false);
+    repository.addLike.mockResolvedValue(false);
+
+    await expect(service.toggleLikeVideo('post-id', 'actor-id')).resolves.toEqual({
+      liked: true,
+      likesCount: 4,
+    });
+    expect(repository.addLike).toHaveBeenCalledWith(
+      'post-id',
+      'actor-id',
+      expect.objectContaining({ type: 'POST_LIKED' }),
+    );
   });
 });

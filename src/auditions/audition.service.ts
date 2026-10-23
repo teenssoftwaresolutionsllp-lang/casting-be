@@ -30,34 +30,44 @@ export class AuditionService {
   }
 
   async findAll(userId: string, category?: string) {
-    const list = await this.auditionRepository.findAll(category);
-    
-    // Annotate whether the current user has applied to this audition and who created it
-    return Promise.all(
-      list.map(async (a) => {
-        const app = await this.applicationRepository.findByAuditionAndApplicant(a.id, userId);
-        return {
-          ...a,
-          createdByMe: a.creatorId === userId,
-          applied: !!app,
-          applicationStatus: app ? app.status : null,
-        };
-      }),
-    );
+    const list = await this.auditionRepository.findAllWithUserApplication(userId, category);
+
+    return list.map((a) => ({
+      id: a.id,
+      creatorId: a.creatorId,
+      title: a.title,
+      category: a.category,
+      role: a.role,
+      roleAgeMin: a.roleAgeMin,
+      roleAgeMax: a.roleAgeMax,
+      roleGender: a.roleGender,
+      location: a.location,
+      pay: a.pay,
+      deadline: a.deadline,
+      lang: a.lang,
+      desc: a.desc,
+      createdAt: a.createdAt,
+      contactName: a.contactName,
+      createdByMe: a.creatorId === userId,
+      applied: !!a.applicationId,
+      applicationStatus: a.applicationStatus || null,
+    }));
   }
 
   async findMyPosted(creatorId: string) {
     const list = await this.auditionRepository.findMyPosted(creatorId);
-    return Promise.all(
-      list.map(async (a) => {
-        const applicants = await this.auditionRepository.getApplicantsForAudition(a.id);
-        return {
-          ...a,
-          createdByMe: true,
-          applicants,
-        };
-      }),
-    );
+    if (!list.length) {
+      return [];
+    }
+
+    const auditionIds = list.map((a) => a.id);
+    const applicantsMap = await this.auditionRepository.getApplicantsForAuditionIds(auditionIds);
+
+    return list.map((a) => ({
+      ...a,
+      createdByMe: true,
+      applicants: applicantsMap[a.id] || [],
+    }));
   }
 
   async findOne(id: string, userId: string) {

@@ -122,6 +122,25 @@ Use it to:
 - view request/response payloads
 - authorize with JWTs for protected routes
 
+### In-app notifications
+
+Notification endpoints require a user JWT:
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/notifications?limit=20&offset=0` | List the current user's notifications, newest first. `limit` must be 1-100. Response includes `notifications`, pagination (`hasMore`), and `unreadCount`. |
+| `GET` | `/notifications/unread-count` | Get the unread count for the current user. |
+| `POST` | `/notifications/:id/read` | Mark one of the current user's notifications as read. |
+| `POST` | `/notifications/read-all` | Mark all of the current user's notifications as read. |
+| `DELETE` | `/notifications/:id` | Delete one of the current user's notifications. |
+| `DELETE` | `/notifications` | Clear all of the current user's notifications. |
+
+The backend creates in-app notifications when another user likes or comments on
+a video post, or applies to an audition. Each notification includes its event
+type, actor (when available), and related video or audition ID. Self-actions do
+not generate notifications. These endpoints provide persisted in-app
+notifications; they do not send push notifications or use a real-time socket.
+
 ### Live platform statistics
 
 `GET /stats` is a public endpoint that returns current aggregate counts for

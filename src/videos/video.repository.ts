@@ -75,6 +75,41 @@ export class VideoRepository {
     return query.orderBy(desc(schema.videos.createdAt));
   }
 
+  async findAllWithUserLike(userId: string, category?: string) {
+    const query = this.db
+      .select({
+        id: schema.videos.id,
+        category: schema.videos.category,
+        creatorId: schema.videos.creatorId,
+        title: schema.videos.title,
+        desc: schema.videos.desc,
+        url: schema.videos.url,
+        thumb: schema.videos.thumb,
+        viewsCount: schema.videos.viewsCount,
+        likesCount: schema.videos.likesCount,
+        createdAt: schema.videos.createdAt,
+        creatorName: schema.users.fullName,
+        creatorPic: schema.users.profilePhoto,
+        creatorCategory: schema.users.category,
+        likedUserId: schema.videoLikes.userId,
+      })
+      .from(schema.videos)
+      .leftJoin(schema.users, eq(schema.videos.creatorId, schema.users.id))
+      .leftJoin(
+        schema.videoLikes,
+        and(
+          eq(schema.videos.id, schema.videoLikes.videoId),
+          eq(schema.videoLikes.userId, userId),
+        ),
+      );
+
+    if (category && category !== 'All') {
+      query.where(eq(schema.videos.category, category));
+    }
+
+    return query.orderBy(desc(schema.videos.createdAt));
+  }
+
   async incrementViews(id: string) {
     await this.db
       .update(schema.videos)
@@ -118,14 +153,35 @@ export class VideoRepository {
     }, {} as Record<string, boolean>);
   }
 
-  async addLike(videoId: string, userId: string) {
-    await this.db.insert(schema.videoLikes).values({ videoId, userId });
-    await this.db
-      .update(schema.videos)
-      .set({
-        likesCount: sql`${schema.videos.likesCount} + 1`,
-      })
-      .where(eq(schema.videos.id, videoId));
+  async addLike(
+    videoId: string,
+    userId: string,
+    notification?: typeof schema.notifications.$inferInsert,
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [created] = await transaction
+        .insert(schema.videoLikes)
+        .values({ videoId, userId })
+        .onConflictDoNothing()
+        .returning({ userId: schema.videoLikes.userId });
+
+      if (!created) {
+        return false;
+      }
+
+      await transaction
+        .update(schema.videos)
+        .set({
+          likesCount: sql`${schema.videos.likesCount} + 1`,
+        })
+        .where(eq(schema.videos.id, videoId));
+
+      if (notification && notification.userId !== userId) {
+        await transaction.insert(schema.notifications).values(notification);
+      }
+
+      return true;
+    });
   }
 
   async removeLike(videoId: string, userId: string) {
@@ -164,9 +220,48 @@ export class VideoRepository {
       .orderBy(desc(schema.comments.createdAt));
   }
 
-  async createComment(comment: typeof schema.comments.$inferInsert) {
-    const [created] = await this.db.insert(schema.comments).values(comment).returning();
-    return created;
+  async getCommentsWithUserLike(videoId: string, userId: string) {
+    return this.db
+      .select({
+        id: schema.comments.id,
+        videoId: schema.comments.videoId,
+        userId: schema.comments.userId,
+        text: schema.comments.text,
+        likesCount: schema.comments.likesCount,
+        createdAt: schema.comments.createdAt,
+        author: schema.users.fullName,
+        authorPic: schema.users.profilePhoto,
+        likedUserId: schema.commentLikes.userId,
+      })
+      .from(schema.comments)
+      .leftJoin(schema.users, eq(schema.comments.userId, schema.users.id))
+      .leftJoin(
+        schema.commentLikes,
+        and(
+          eq(schema.comments.id, schema.commentLikes.commentId),
+          eq(schema.commentLikes.userId, userId),
+        ),
+      )
+      .where(eq(schema.comments.videoId, videoId))
+      .orderBy(desc(schema.comments.createdAt));
+  }
+
+  async createComment(
+    comment: typeof schema.comments.$inferInsert,
+    notification?: typeof schema.notifications.$inferInsert,
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [created] = await transaction
+        .insert(schema.comments)
+        .values(comment)
+        .returning();
+
+      if (notification && notification.userId !== comment.userId) {
+        await transaction.insert(schema.notifications).values(notification);
+      }
+
+      return created;
+    });
   }
 
   async getCommentById(commentId: string) {

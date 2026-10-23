@@ -20,6 +20,9 @@ export const DRIZZLE_DB = 'DRIZZLE_DB';
         }
         const pool = new Pool({
           connectionString,
+          max: 30, // Increase pool size from default 10 to 30 for high concurrency
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 5000,
         });
         return drizzle(pool, { schema });
       },

@@ -11,9 +11,22 @@ export class ApplicationRepository {
     private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async create(application: typeof schema.applications.$inferInsert) {
-    const [created] = await this.db.insert(schema.applications).values(application).returning();
-    return created;
+  async create(
+    application: typeof schema.applications.$inferInsert,
+    notification?: typeof schema.notifications.$inferInsert,
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [created] = await transaction
+        .insert(schema.applications)
+        .values(application)
+        .returning();
+
+      if (notification && notification.userId !== application.applicantId) {
+        await transaction.insert(schema.notifications).values(notification);
+      }
+
+      return created;
+    });
   }
 
   async findById(id: string) {

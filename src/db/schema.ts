@@ -291,11 +291,18 @@ export const messages = pgTable('messages', {
 export const notifications = pgTable('notifications', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
+  type: text('type').default('GENERAL').notNull(),
   title: text('title').notNull(),
   text: text('text').notNull(),
+  entityType: text('entity_type'),
+  entityId: text('entity_id'),
   read: boolean('read').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => [
+  index('notifications_user_created_at_idx').on(table.userId, table.createdAt),
+  index('notifications_user_read_idx').on(table.userId, table.read),
+]);
 
 // ==========================================
 // ACTIVITY LOGS TABLE (Audit Trail)

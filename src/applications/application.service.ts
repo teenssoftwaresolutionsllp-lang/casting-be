@@ -27,11 +27,22 @@ export class ApplicationService {
       throw new BadRequestException('You have already applied for this audition.');
     }
 
-    return this.applicationRepository.create({
-      auditionId,
-      applicantId,
-      coverLetter: dto.coverLetter,
-    });
+    return this.applicationRepository.create(
+      {
+        auditionId,
+        applicantId,
+        coverLetter: dto.coverLetter,
+      },
+      {
+        userId: audition.creatorId,
+        actorId: applicantId,
+        type: 'AUDITION_APPLIED',
+        title: 'New audition application',
+        text: `Someone applied for "${audition.title}".`,
+        entityType: 'AUDITION',
+        entityId: auditionId,
+      },
+    );
   }
 
   async findMyApplications(applicantId: string) {
