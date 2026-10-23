@@ -45,6 +45,7 @@ RESEND_FROM_EMAIL="Casting <no-reply@your-verified-domain.com>"
 BACKEND_URL=https://casting-be.vercel.app
 FRONTEND_URL=http://localhost:5173
 APP_DEEP_LINK_SCHEME=casting
+PASSWORD_RESET_ONELINK_URL=https://treeko.onelink.me/CEaN
 
 PASSWORD_RESET_DEV_MODE=true
 
@@ -55,8 +56,9 @@ FACE_DISTANCE_THRESHOLD=0.6
 ```
 
 Notes:
-- `BACKEND_URL` is the public backend origin used to serve the browser password-reset page.
-- Password-reset emails link directly to the backend HTML form; `FRONTEND_URL` is not used to construct these links.
+- `BACKEND_URL` is the public backend origin used for the browser password-reset fallback.
+- `PASSWORD_RESET_ONELINK_URL` is the AppsFlyer OneLink base used in password-reset emails. The link passes `deep_link_value=reset-password` and the single-use token in `deep_link_sub1`; configure the mobile app to open its reset-password screen using those values.
+- The OneLink's `af_web_dp` fallback opens the backend HTML reset form when the app cannot handle the link.
 - Face verification requires a JSON key ring in `FACE_ENCRYPTION_KEYS`, keyed by
   integer key version and containing Base64-encoded 32-byte AES keys. Keep
   previous keys in the ring while templates encrypted with those versions
@@ -436,19 +438,22 @@ Behavior:
 - sends a reset email via Resend
 - in local development mode, returns a `resetToken` if `PASSWORD_RESET_DEV_MODE=true`
 
-### Browser Password Reset Flow
+### Password Reset Flow
 
 Email link format:
 
 ```text
-https://casting-be.vercel.app/auth/reset-password?token=<single-use-token>
+https://treeko.onelink.me/CEaN?deep_link_value=reset-password&deep_link_sub1=<single-use-token>&af_web_dp=<backend-reset-form-url>
 ```
 
-Opening the link displays a browser form to enter and confirm a new password.
+When the app is installed and configured for the OneLink, opening the email link
+navigates to its reset-password screen with the single-use token. The `af_web_dp`
+parameter falls back to a browser form to enter and confirm a new password.
 Submitting the form posts to `POST /auth/reset-password-form`, which applies the
 same token validation and password hashing as the JSON API. The reset token is
-not exposed to third-party resources, and the page disables caching and
-referrers.
+passed to AppsFlyer in the OneLink URL to support app routing. The backend
+browser form disables caching and referrers and does not load third-party
+resources.
 
 Clients that reset passwords through the API can continue to use:
 
@@ -729,7 +734,7 @@ https://casting-be.vercel.app
 
 - Admin and user authentication are completely separate.
 - Artists can register and fill profile information later.
-- Password reset emails open a backend-hosted HTML form; submitting it updates the password through the existing token validation flow.
+- Password reset emails open the app's reset-password screen through AppsFlyer OneLink when available, with the backend-hosted HTML form as a web fallback.
 - Swagger docs need static assets to be served correctly in production deployments.
 
 ## License

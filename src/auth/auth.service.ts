@@ -241,6 +241,9 @@ export class AuthService {
     const apiKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM_EMAIL;
     const publicBaseUrl = process.env.BACKEND_URL?.replace(/\/+$/, '');
+    const oneLinkUrl =
+      process.env.PASSWORD_RESET_ONELINK_URL ||
+      'https://treeko.onelink.me/CEaN';
     const devMode =
       process.env.PASSWORD_RESET_DEV_MODE === 'true' &&
       process.env.NODE_ENV === 'development';
@@ -268,7 +271,15 @@ export class AuthService {
     }
 
     try {
-      const resetUrl = `${publicBaseUrl}/auth/reset-password?token=${encodeURIComponent(token)}`;
+      const browserResetUrl = new URL(
+        `/auth/reset-password?token=${encodeURIComponent(token)}`,
+        `${publicBaseUrl}/`,
+      ).toString();
+      const resetUrl = new URL(oneLinkUrl);
+      resetUrl.searchParams.set('deep_link_value', 'reset-password');
+      resetUrl.searchParams.set('deep_link_sub1', token);
+      resetUrl.searchParams.set('af_web_dp', browserResetUrl);
+
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -279,7 +290,7 @@ export class AuthService {
           from: fromEmail,
           to: [user.email || dto.email],
           subject: 'Reset your Casting account password',
-          text: `Use this link to reset your password. It expires in 30 minutes:\n\n${resetUrl}\n\nIf you did not request this, you can ignore this email.`,
+          text: `Use this link to reset your password. It expires in 30 minutes:\n\n${resetUrl.toString()}\n\nIf you did not request this, you can ignore this email.`,
         }),
       });
 

@@ -12,6 +12,7 @@ const originalEnvironment = {
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
   BACKEND_URL: process.env.BACKEND_URL,
   FRONTEND_URL: process.env.FRONTEND_URL,
+  PASSWORD_RESET_ONELINK_URL: process.env.PASSWORD_RESET_ONELINK_URL,
   NODE_ENV: process.env.NODE_ENV,
   PASSWORD_RESET_DEV_MODE: process.env.PASSWORD_RESET_DEV_MODE,
 };
@@ -26,6 +27,7 @@ describe('AuthService - Password Reset', () => {
     process.env.RESEND_FROM_EMAIL = 'Casting <no-reply@example.com>';
     process.env.BACKEND_URL = 'https://casting-api.example.com/';
     process.env.FRONTEND_URL = 'https://casting.example.com/';
+    process.env.PASSWORD_RESET_ONELINK_URL = 'https://treeko.onelink.me/CEaN';
     process.env.NODE_ENV = 'test';
     process.env.PASSWORD_RESET_DEV_MODE = 'false';
 
@@ -73,14 +75,20 @@ describe('AuthService - Password Reset', () => {
     );
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     const resetUrl = new URL(body.text.match(/https:\/\/[^\s]+/)![0]);
-    const token = resetUrl.searchParams.get('token');
+    const token = resetUrl.searchParams.get('deep_link_sub1');
     if (token === null) {
       throw new Error('Reset email did not contain a token.');
     }
     expect(resetUrl.origin + resetUrl.pathname).toBe(
+      'https://treeko.onelink.me/CEaN',
+    );
+    expect(resetUrl.searchParams.get('deep_link_value')).toBe('reset-password');
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+    const browserResetUrl = new URL(resetUrl.searchParams.get('af_web_dp')!);
+    expect(browserResetUrl.origin + browserResetUrl.pathname).toBe(
       'https://casting-api.example.com/auth/reset-password',
     );
-    expect(token).toMatch(/^[a-f0-9]{64}$/);
+    expect(browserResetUrl.searchParams.get('token')).toBe(token);
     expect(mockUserRepo.setPasswordResetToken.mock.calls[0][1]).toBe(
       crypto.createHash('sha256').update(token).digest('hex'),
     );
