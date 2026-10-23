@@ -83,7 +83,11 @@ describe('AuthService - Password Reset', () => {
       'https://treeko.onelink.me/CEaN',
     );
     expect(resetUrl.searchParams.get('deep_link_value')).toBe('reset-password');
+    expect(resetUrl.searchParams.get('token')).toBe(token);
     expect(token).toMatch(/^[a-f0-9]{64}$/);
+    expect(resetUrl.searchParams.get('af_dp')).toBe(
+      `treeko://forgotPassword?token=${token}`,
+    );
     const browserResetUrl = new URL(resetUrl.searchParams.get('af_web_dp')!);
     expect(browserResetUrl.origin + browserResetUrl.pathname).toBe(
       'https://casting-api.example.com/auth/reset-password',

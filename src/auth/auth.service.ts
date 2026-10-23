@@ -276,8 +276,13 @@ export class AuthService {
         `${publicBaseUrl}/`,
       ).toString();
       const resetUrl = new URL(oneLinkUrl);
+      resetUrl.searchParams.set('token', token);
       resetUrl.searchParams.set('deep_link_value', 'reset-password');
       resetUrl.searchParams.set('deep_link_sub1', token);
+      resetUrl.searchParams.set(
+        'af_dp',
+        `treeko://forgotPassword?token=${encodeURIComponent(token)}`,
+      );
       resetUrl.searchParams.set('af_web_dp', browserResetUrl);
 
       const response = await fetch('https://api.resend.com/emails', {

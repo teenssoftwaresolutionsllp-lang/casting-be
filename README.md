@@ -57,7 +57,7 @@ FACE_DISTANCE_THRESHOLD=0.6
 
 Notes:
 - `BACKEND_URL` is the public backend origin used for the browser password-reset fallback.
-- `PASSWORD_RESET_ONELINK_URL` is the AppsFlyer OneLink base used in password-reset emails. The link passes `deep_link_value=reset-password` and the single-use token in `deep_link_sub1`; configure the mobile app to open its reset-password screen using those values.
+- `PASSWORD_RESET_ONELINK_URL` is the AppsFlyer OneLink base used in password-reset emails. The link passes the single-use token as `token` and `deep_link_sub1`, sets `deep_link_value=reset-password`, and includes `af_dp=treeko://forgotPassword?token=...` for the app's custom-scheme route. Configure the mobile app and AppsFlyer to handle these values.
 - The OneLink's `af_web_dp` fallback opens the backend HTML reset form when the app cannot handle the link.
 - Face verification requires a JSON key ring in `FACE_ENCRYPTION_KEYS`, keyed by
   integer key version and containing Base64-encoded 32-byte AES keys. Keep
@@ -443,7 +443,7 @@ Behavior:
 Email link format:
 
 ```text
-https://treeko.onelink.me/CEaN?deep_link_value=reset-password&deep_link_sub1=<single-use-token>&af_web_dp=<backend-reset-form-url>
+https://treeko.onelink.me/CEaN?deep_link_value=reset-password&token=<single-use-token>&deep_link_sub1=<single-use-token>&af_dp=treeko%3A%2F%2FforgotPassword%3Ftoken%3D<single-use-token>&af_web_dp=<backend-reset-form-url>
 ```
 
 When the app is installed and configured for the OneLink, opening the email link
