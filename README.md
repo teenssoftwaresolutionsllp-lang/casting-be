@@ -122,24 +122,106 @@ Use it to:
 - view request/response payloads
 - authorize with JWTs for protected routes
 
-### In-app notifications
+### In-app Notifications & FCM Push
 
-Notification endpoints require a user JWT:
+The backend saves every notification to the database **and** sends an FCM push notification to the recipient's registered device. Notifications work in foreground, background, and terminated app states. The Flutter app handles display; the backend handles triggers and delivery.
+
+#### Notification Endpoints (all require user JWT)
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `GET` | `/notifications?limit=20&offset=0` | List the current user's notifications, newest first. `limit` must be 1-100. Response includes `notifications`, pagination (`hasMore`), and `unreadCount`. |
-| `GET` | `/notifications/unread-count` | Get the unread count for the current user. |
-| `POST` | `/notifications/:id/read` | Mark one of the current user's notifications as read. |
-| `POST` | `/notifications/read-all` | Mark all of the current user's notifications as read. |
-| `DELETE` | `/notifications/:id` | Delete one of the current user's notifications. |
-| `DELETE` | `/notifications` | Clear all of the current user's notifications. |
+| `GET` | `/notifications?limit=20&offset=0` | List the current user's notifications, newest first. Response includes `notifications`, pagination (`hasMore`), and `unreadCount`. |
+| `GET` | `/notifications/unread-count` | Get the unread notification count for the current user. |
+| `POST` | `/notifications/:id/read` | Mark one notification as read. |
+| `POST` | `/notifications/read-all` | Mark all notifications as read. |
+| `DELETE` | `/notifications/:id` | Delete one notification. |
+| `DELETE` | `/notifications` | Clear all notifications. |
+| `POST` | `/notifications/fcm-token` | Register or update the FCM device token. Call after login and on token refresh. Body: `{ "token": "<fcm_device_token>" }` |
+| `DELETE` | `/notifications/fcm-token` | Clear the FCM device token. Call on logout. |
 
-The backend creates in-app notifications when another user likes or comments on
-a video post, or applies to an audition. Each notification includes its event
-type, actor (when available), and related video or audition ID. Self-actions do
-not generate notifications. These endpoints provide persisted in-app
-notifications; they do not send push notifications or use a real-time socket.
+#### FCM Token Setup
+
+The Flutter app must register its FCM device token with the backend after every login and whenever `onTokenRefresh` fires. Without a registered token the backend saves notifications to the database but cannot push them.
+
+```http
+POST /notifications/fcm-token
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{ "token": "<firebase_device_token>" }
+```
+
+On logout, clear the token so stale devices do not receive notifications:
+
+```http
+DELETE /notifications/fcm-token
+Authorization: Bearer <jwt>
+```
+
+Invalid or expired device tokens are detected automatically and cleared from the database after a failed delivery attempt.
+
+#### Notification Triggers
+
+All triggers are automatic — no additional API calls are needed. Self-actions never generate notifications.
+
+**Social**
+
+| Event | Type | Recipient | Entity in payload |
+| --- | --- | --- | --- |
+| User likes a post | `POST_LIKED` | Post owner | `entityType: VIDEO`, `entityId: videoId` |
+| User comments on a post | `POST_COMMENTED` | Post owner | `entityType: VIDEO`, `entityId: videoId` |
+| User likes a comment | `COMMENT_LIKED` | Comment owner | `entityType: VIDEO`, `entityId: videoId` |
+| User likes a story | `STORY_LIKED` | Story owner | `entityType: STORY`, `entityId: storyId` |
+| User replies to a story | `STORY_REPLIED` | Story owner | `entityType: STORY`, `entityId: storyId` |
+| User follows another user | `NEW_FOLLOWER` | Followed user | `entityType: USER`, `entityId: followerId` |
+
+**Chat**
+
+| Event | Type | Recipient | Entity in payload |
+| --- | --- | --- | --- |
+| User sends a chat message | `NEW_MESSAGE` | All other chat participants | `entityType: CHAT`, `entityId: chatId` |
+
+**Auditions & Applications**
+
+| Event | Type | Recipient | Entity in payload |
+| --- | --- | --- | --- |
+| Artist applies to an audition | `AUDITION_APPLIED` | Casting director (audition owner) | `entityType: AUDITION`, `entityId: auditionId` |
+| Application shortlisted | `APPLICATION_SHORTLISTED` | Artist | `entityType: APPLICATION`, `entityId: applicationId` |
+| Application accepted | `APPLICATION_ACCEPTED` | Artist | `entityType: APPLICATION`, `entityId: applicationId` |
+| Application rejected | `APPLICATION_REJECTED` | Artist | `entityType: APPLICATION`, `entityId: applicationId` |
+| Application status changed | `APPLICATION_STATUS_UPDATED` | Artist | `entityType: APPLICATION`, `entityId: applicationId` |
+| Audition deleted/cancelled | `AUDITION_CANCELLED` | All applicants (bulk push) | `entityType: AUDITION`, `entityId: auditionId` |
+
+#### FCM Payload Structure
+
+Every push notification includes a `data` map for deep-link navigation:
+
+```json
+{
+  "notification": {
+    "title": "New like",
+    "body": "Someone liked your post."
+  },
+  "data": {
+    "type": "POST_LIKED",
+    "entityType": "VIDEO",
+    "entityId": "<uuid>",
+    "actorId": "<uuid>"
+  }
+}
+```
+
+The Flutter app uses `type`, `entityType`, and `entityId` to navigate to the correct screen when the notification is tapped.
+
+#### Required Environment Variables for FCM
+
+```env
+FIREBASE_PROJECT_ID=casting-29490
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@casting-29490.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```
+
+On a server without the `firebase-service-account.json` file (e.g. Render), set the three variables above directly in the dashboard environment. Do **not** set `FIREBASE_SERVICE_ACCOUNT_PATH` on hosted environments.
 
 ### Live platform statistics
 
@@ -655,10 +737,14 @@ Stories remain active for 24 hours and allow image or video uploads.
 
 Endpoints:
 
-- `POST /stories`
-- `GET /stories/feed`
-- `POST /stories/:id/views`
-- `DELETE /stories/:id`
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `POST` | `/stories` | Upload a new image or video story (expires after 24 h) |
+| `GET` | `/stories/feed` | Get active stories grouped by creator, with viewed status |
+| `POST` | `/stories/:id/views` | Mark a story as viewed |
+| `POST` | `/stories/:id/likes` | Toggle like on a story (notifies the story owner) |
+| `POST` | `/stories/:id/replies` | Reply to a story. Body: `{ "text": "..." }` (notifies the story owner) |
+| `DELETE` | `/stories/:id` | Delete your own story |
 
 ## Face Verification API
 
@@ -701,22 +787,26 @@ considered untrusted.
 
 ## Core Database Tables
 
-- `users`
-- `follows`
-- `videos`
-- `video_likes`
-- `comments`
-- `comment_likes`
-- `auditions`
-- `applications`
-- `stories`
-- `story_views`
-- `chats`
-- `chat_participants`
-- `messages`
-- `notifications`
-- `activity_logs`
-- `admin_users`
+| Table | Purpose |
+| --- | --- |
+| `users` | User accounts. Includes `fcm_token` column for push delivery. |
+| `follows` | Follow relationships between users |
+| `videos` | Video/photo posts |
+| `video_likes` | Likes on posts |
+| `comments` | Comments on posts |
+| `comment_likes` | Likes on comments |
+| `auditions` | Casting call listings |
+| `applications` | Applications submitted by artists |
+| `stories` | 24-hour story posts |
+| `story_views` | View records per story per user |
+| `story_likes` | Likes on stories |
+| `story_replies` | Text replies to stories |
+| `chats` | Chat conversations |
+| `chat_participants` | Members of each chat |
+| `messages` | Chat messages |
+| `notifications` | In-app notification records |
+| `activity_logs` | Audit log of user actions |
+| `admin_users` | Admin account credentials |
 
 ## NPM Scripts
 
@@ -759,25 +849,4 @@ https://casting-be.vercel.app
 ## License
 
 This project is private and intended for internal platform usage.
-
-
-
-APP_DEEP_LINK_SCHEME=casting
-BACKEND_URL=https://casting-be.vercel.app
-CLOUDINARY_API_KEY=516387729162788
-CLOUDINARY_API_SECRET=mkNOglXKr13ziWD4Yl65wJ3QLuA
-CLOUDINARY_CLOUD_NAME=prmynfbv
-DATABASE_URL="postgresql://neondb_owner:npg_y1nfKVeqcx4M@ep-empty-wave-a5rmrick-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-ENABLE_TEST_MODE=false
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@casting-29490.iam.gserviceaccount.com
-FIREBASE_PROJECT_ID=casting-29490
-FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
-FRONTEND_URL=http://localhost:5173
-JWT_SECRET=supersecretjwtkeyforcastingapp2026
-NODE_ENV=production
-PASSWORD_RESET_DEV_MODE=false
-PORT=3000
-RAZORPAY_KEY_ID=rzp_test_SRrKIfsKje5uNq
-RAZORPAY_KEY_SECRET=KfntU4VVvNMAX64AvdhClFNd
-
-RESEND_FROM_EMAIL="Casting <no-reply@treemediaagency.com>"
+
