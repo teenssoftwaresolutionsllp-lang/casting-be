@@ -25,6 +25,14 @@ export class UserRepository {
     return results[0] || null;
   }
 
+  async findByIds(ids: string[]) {
+    if (!ids.length) return [];
+    return this.db
+      .select()
+      .from(schema.users)
+      .where(inArray(schema.users.id, ids));
+  }
+
   async deleteById(id: string): Promise<boolean> {
     const [deleted] = await this.db
       .delete(schema.users)

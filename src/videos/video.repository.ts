@@ -153,11 +153,7 @@ export class VideoRepository {
     }, {} as Record<string, boolean>);
   }
 
-  async addLike(
-    videoId: string,
-    userId: string,
-    notification?: typeof schema.notifications.$inferInsert,
-  ) {
+  async addLike(videoId: string, userId: string) {
     return this.db.transaction(async (transaction) => {
       const [created] = await transaction
         .insert(schema.videoLikes)
@@ -175,10 +171,6 @@ export class VideoRepository {
           likesCount: sql`${schema.videos.likesCount} + 1`,
         })
         .where(eq(schema.videos.id, videoId));
-
-      if (notification && notification.userId !== userId) {
-        await transaction.insert(schema.notifications).values(notification);
-      }
 
       return true;
     });
@@ -246,22 +238,12 @@ export class VideoRepository {
       .orderBy(desc(schema.comments.createdAt));
   }
 
-  async createComment(
-    comment: typeof schema.comments.$inferInsert,
-    notification?: typeof schema.notifications.$inferInsert,
-  ) {
-    return this.db.transaction(async (transaction) => {
-      const [created] = await transaction
-        .insert(schema.comments)
-        .values(comment)
-        .returning();
-
-      if (notification && notification.userId !== comment.userId) {
-        await transaction.insert(schema.notifications).values(notification);
-      }
-
-      return created;
-    });
+  async createComment(comment: typeof schema.comments.$inferInsert) {
+    const [created] = await this.db
+      .insert(schema.comments)
+      .values(comment)
+      .returning();
+    return created;
   }
 
   async getCommentById(commentId: string) {

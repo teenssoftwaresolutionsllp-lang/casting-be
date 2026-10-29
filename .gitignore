@@ -57,3 +57,5 @@ firebase-adminsdk-*.json
 
 # Diagnostic reports
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+.vercel
+.env*

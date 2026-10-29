@@ -65,6 +65,7 @@ export const users = pgTable('users', {
   bio: text('bio'),
   trkCode: text('trk_code').unique(), // Auto-generated: TRK260001, TRK260002...
   emailVerified: boolean('email_verified').default(false).notNull(),
+  fcmToken: text('fcm_token'), // Firebase Cloud Messaging device push token
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -147,6 +148,32 @@ export const storyViews = pgTable('story_views', {
   viewedAt: timestamp('viewed_at').defaultNow().notNull(),
 }, (table) => [
   primaryKey({ columns: [table.storyId, table.viewerId] }),
+]);
+
+// ==========================================
+// STORY LIKES TABLE
+// ==========================================
+export const storyLikes = pgTable('story_likes', {
+  storyId: uuid('story_id').references(() => stories.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.storyId, table.userId] }),
+  index('story_likes_user_id_idx').on(table.userId),
+]);
+
+// ==========================================
+// STORY REPLIES TABLE
+// ==========================================
+export const storyReplies = pgTable('story_replies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  storyId: uuid('story_id').references(() => stories.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  text: text('text').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('story_replies_story_id_idx').on(table.storyId),
+  index('story_replies_user_id_idx').on(table.userId),
 ]);
 
 // ==========================================

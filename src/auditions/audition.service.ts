@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { AuditionRepository } from './audition.repository';
 import { ApplicationRepository } from '../applications/application.repository';
+import { NotificationService } from '../notifications/notification.service';
 import { CreateAuditionDto } from './dto/create-audition.dto';
 
 @Injectable()
@@ -10,6 +17,7 @@ export class AuditionService {
     // inject application repository to check if user has already applied
     @Inject(forwardRef(() => ApplicationRepository))
     private readonly applicationRepository: ApplicationRepository,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async createAudition(creatorId: string, dto: CreateAuditionDto) {
@@ -78,7 +86,7 @@ export class AuditionService {
 
     const createdByMe = audition.creatorId === userId;
     const app = await this.applicationRepository.findByAuditionAndApplicant(id, userId);
-    
+
     let applicants: any[] = [];
     if (createdByMe) {
       applicants = await this.auditionRepository.getApplicantsForAudition(id);
@@ -103,10 +111,34 @@ export class AuditionService {
       throw new ForbiddenException('Only the audition creator or an admin can delete it.');
     }
 
+    // Collect all applicant IDs before deletion (cascade will remove applications)
+    const applicants = await this.auditionRepository.getApplicantsForAudition(id);
+    const applicantIds = applicants
+      .map((a: any) => a.applicantId ?? a.id)
+      .filter((aid: string) => aid !== userId);
+
     const deleted = await this.auditionRepository.deleteById(id);
     if (!deleted) {
       throw new NotFoundException(`Audition with ID ${id} not found.`);
     }
+
+    // Notify all applicants that the audition was cancelled
+    if (applicantIds.length > 0) {
+      this.notificationService
+        .createBulkNotifications(
+          applicantIds,
+          'Audition cancelled',
+          `The audition "${audition.title}" you applied for has been cancelled.`,
+          {
+            actorId: userId,
+            type: 'AUDITION_CANCELLED',
+            entityType: 'AUDITION',
+            entityId: id,
+          },
+        )
+        .catch(() => undefined);
+    }
+
     return { deleted: true };
   }
 }

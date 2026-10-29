@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { VideoRepository } from './video.repository';
+import { NotificationService } from '../notifications/notification.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 
@@ -7,7 +8,10 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 export class VideoService {
   private readonly defaultProfilePic = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80';
 
-  constructor(private readonly videoRepository: VideoRepository) {}
+  constructor(
+    private readonly videoRepository: VideoRepository,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async createVideo(creatorId: string, dto: CreateVideoDto) {
     return this.videoRepository.create({
@@ -82,7 +86,6 @@ export class VideoService {
   }
 
   async toggleLikeVideo(videoId: string, userId: string) {
-    // Validate video existence
     const video = await this.videoRepository.findById(videoId);
     if (!video) {
       throw new NotFoundException(`Video with ID ${videoId} not found.`);
@@ -93,15 +96,20 @@ export class VideoService {
       await this.videoRepository.removeLike(videoId, userId);
       return { liked: false, likesCount: Math.max(0, video.likesCount - 1) };
     } else {
-      const created = await this.videoRepository.addLike(videoId, userId, {
-        userId: video.creatorId,
-        actorId: userId,
-        type: 'POST_LIKED',
-        title: 'New like',
-        text: 'Someone liked your post.',
-        entityType: 'VIDEO',
-        entityId: videoId,
-      });
+      const created = await this.videoRepository.addLike(videoId, userId);
+
+      if (created && video.creatorId !== userId) {
+        // POST_LIKED notification + FCM push
+        this.notificationService
+          .createNotification(video.creatorId, 'New like', 'Someone liked your post.', {
+            actorId: userId,
+            type: 'POST_LIKED',
+            entityType: 'VIDEO',
+            entityId: videoId,
+          })
+          .catch(() => undefined);
+      }
+
       return {
         liked: true,
         likesCount: video.likesCount + (created ? 1 : 0),
@@ -142,22 +150,21 @@ export class VideoService {
       throw new NotFoundException(`Video with ID ${videoId} not found.`);
     }
 
-    return this.videoRepository.createComment(
-      {
-        videoId,
-        userId,
-        text: dto.text,
-      },
-      {
-        userId: video.creatorId,
-        actorId: userId,
-        type: 'POST_COMMENTED',
-        title: 'New comment',
-        text: 'Someone commented on your post.',
-        entityType: 'VIDEO',
-        entityId: videoId,
-      },
-    );
+    const comment = await this.videoRepository.createComment({ videoId, userId, text: dto.text });
+
+    if (video.creatorId !== userId) {
+      // POST_COMMENTED notification + FCM push
+      this.notificationService
+        .createNotification(video.creatorId, 'New comment', 'Someone commented on your post.', {
+          actorId: userId,
+          type: 'POST_COMMENTED',
+          entityType: 'VIDEO',
+          entityId: videoId,
+        })
+        .catch(() => undefined);
+    }
+
+    return comment;
   }
 
   async toggleLikeComment(commentId: string, userId: string) {
@@ -172,6 +179,19 @@ export class VideoService {
       return { liked: false, likes: Math.max(0, comment.likesCount - 1) };
     } else {
       await this.videoRepository.addCommentLike(commentId, userId);
+
+      if (comment.userId !== userId) {
+        // COMMENT_LIKED notification + FCM push
+        this.notificationService
+          .createNotification(comment.userId, 'New like on comment', 'Someone liked your comment.', {
+            actorId: userId,
+            type: 'COMMENT_LIKED',
+            entityType: 'VIDEO',
+            entityId: comment.videoId,
+          })
+          .catch(() => undefined);
+      }
+
       return { liked: true, likes: comment.likesCount + 1 };
     }
   }

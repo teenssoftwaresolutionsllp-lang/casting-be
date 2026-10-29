@@ -124,4 +124,55 @@ export class StoriesRepository {
   async deleteById(id: string) {
     await this.db.delete(schema.stories).where(eq(schema.stories.id, id));
   }
+
+  // ── Story Likes ────────────────────────────────────────────────────────────
+
+  async hasLikedStory(storyId: string, userId: string): Promise<boolean> {
+    const results = await this.db
+      .select()
+      .from(schema.storyLikes)
+      .where(and(eq(schema.storyLikes.storyId, storyId), eq(schema.storyLikes.userId, userId)))
+      .limit(1);
+    return results.length > 0;
+  }
+
+  async addStoryLike(storyId: string, userId: string) {
+    await this.db
+      .insert(schema.storyLikes)
+      .values({ storyId, userId })
+      .onConflictDoNothing();
+  }
+
+  async removeStoryLike(storyId: string, userId: string) {
+    await this.db
+      .delete(schema.storyLikes)
+      .where(and(eq(schema.storyLikes.storyId, storyId), eq(schema.storyLikes.userId, userId)));
+  }
+
+  // ── Story Replies ──────────────────────────────────────────────────────────
+
+  async createStoryReply(storyId: string, userId: string, text: string) {
+    const [reply] = await this.db
+      .insert(schema.storyReplies)
+      .values({ storyId, userId, text })
+      .returning();
+    return reply;
+  }
+
+  async getStoryReplies(storyId: string) {
+    return this.db
+      .select({
+        id: schema.storyReplies.id,
+        storyId: schema.storyReplies.storyId,
+        userId: schema.storyReplies.userId,
+        text: schema.storyReplies.text,
+        createdAt: schema.storyReplies.createdAt,
+        authorName: schema.users.fullName,
+        authorPic: schema.users.profilePhoto,
+      })
+      .from(schema.storyReplies)
+      .leftJoin(schema.users, eq(schema.storyReplies.userId, schema.users.id))
+      .where(eq(schema.storyReplies.storyId, storyId))
+      .orderBy(desc(schema.storyReplies.createdAt));
+  }
 }

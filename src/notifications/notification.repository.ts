@@ -19,6 +19,11 @@ export class NotificationRepository {
     return created;
   }
 
+  async createBulk(notifications: (typeof schema.notifications.$inferInsert)[]) {
+    if (!notifications.length) return;
+    await this.db.insert(schema.notifications).values(notifications);
+  }
+
   async findByUserId(userId: string, limit: number, offset: number) {
     return this.db
       .select({

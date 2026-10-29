@@ -43,6 +43,13 @@
       "when": 1792987803330,
       "tag": "0005_sticky_sunset_bain",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793266390280,
+      "tag": "0006_bent_paper_doll",
+      "breakpoints": true
     }
   ]
 }

@@ -157,4 +157,17 @@ export class ChatRepository {
     }).returning();
     return msg;
   }
+
+  /**
+   * Returns the user IDs of all chat participants except the given sender.
+   * Used to determine who should receive a NEW_MESSAGE notification.
+   */
+  async getOtherParticipants(chatId: string, senderId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ userId: schema.chatParticipants.userId })
+      .from(schema.chatParticipants)
+      .where(eq(schema.chatParticipants.chatId, chatId));
+
+    return rows.map((r) => r.userId).filter((uid) => uid !== senderId);
+  }
 }

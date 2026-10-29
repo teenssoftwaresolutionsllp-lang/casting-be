@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { UserRepository } from './user.repository';
+import { NotificationService } from '../notifications/notification.service';
 
 @Injectable()
 export class UserService {
@@ -16,7 +17,10 @@ export class UserService {
     'awards', 'bio',
   ] as const;
 
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async findById(id: string) {
     const user = await this.userRepository.findById(id);
@@ -130,6 +134,22 @@ export class UserService {
       return { following: false };
     } else {
       await this.userRepository.followUser(followerId, followingId);
+
+      // Notify the followed user
+      this.notificationService
+        .createNotification(
+          followingId,
+          'New follower',
+          'Someone started following you.',
+          {
+            actorId: followerId,
+            type: 'NEW_FOLLOWER',
+            entityType: 'USER',
+            entityId: followerId,
+          },
+        )
+        .catch(() => undefined); // non-blocking, don't fail the follow action
+
       return { following: true };
     }
   }

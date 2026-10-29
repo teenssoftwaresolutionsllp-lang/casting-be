@@ -11,6 +11,7 @@ import {
   Param,
   ParseUUIDPipe,
   Query,
+  Body,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,10 +19,18 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiQuery,
+  ApiBody,
 } from '@nestjs/swagger';
+import { IsString, IsNotEmpty } from 'class-validator';
 import { NotificationService } from './notification.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+
+class RegisterFcmTokenDto {
+  @IsString()
+  @IsNotEmpty()
+  token: string;
+}
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -91,5 +100,38 @@ export class NotificationController {
   @ApiResponse({ status: 200, description: 'All notifications cleared.' })
   async clearAll(@CurrentUser() user: any) {
     return this.notificationService.clearAll(user.sub);
+  }
+
+  // ── FCM Token Registration ──────────────────────────────────────────────────
+
+  @Post('fcm-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Register or update the FCM device token for the current user',
+    description:
+      'Call this endpoint after the Flutter app receives a new FCM token (on app start or when onTokenRefresh fires). ' +
+      'The token is stored per-user and used by the backend to deliver push notifications.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        token: { type: 'string', example: 'fcm_device_token_here' },
+      },
+      required: ['token'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'FCM token registered successfully.' })
+  @ApiResponse({ status: 400, description: 'Token must not be empty.' })
+  async registerFcmToken(@CurrentUser() user: any, @Body() body: RegisterFcmTokenDto) {
+    return this.notificationService.registerFcmToken(user.sub, body.token);
+  }
+
+  @Delete('fcm-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Clear the FCM device token for the current user (on logout)' })
+  @ApiResponse({ status: 200, description: 'FCM token cleared.' })
+  async clearFcmToken(@CurrentUser() user: any) {
+    return this.notificationService.clearFcmToken(user.sub);
   }
 }

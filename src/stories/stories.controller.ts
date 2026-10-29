@@ -1,9 +1,12 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   DefaultValuePipe,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   ParseUUIDPipe,
@@ -22,10 +25,17 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { IsString, IsNotEmpty } from 'class-validator';
 import type { Express } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StoriesService } from './stories.service';
+
+class StoryReplyDto {
+  @IsString()
+  @IsNotEmpty()
+  text: string;
+}
 
 @ApiTags('Stories')
 @ApiBearerAuth()
@@ -72,6 +82,32 @@ export class StoriesController {
   @ApiResponse({ status: 201, description: 'Story marked as viewed.' })
   async markViewed(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) storyId: string) {
     return this.storiesService.markViewed(storyId, user.sub);
+  }
+
+  @Post(':id/likes')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Toggle like on an active story' })
+  @ApiResponse({ status: 200, description: 'Like toggled. Returns { liked: boolean }.' })
+  async toggleLike(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) storyId: string) {
+    return this.storiesService.toggleLikeStory(storyId, user.sub);
+  }
+
+  @Post(':id/replies')
+  @ApiOperation({ summary: 'Reply to an active story (notifies the story owner)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { text: { type: 'string', example: 'Great story!' } },
+      required: ['text'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Reply created.' })
+  async replyToStory(
+    @CurrentUser() user: any,
+    @Param('id', ParseUUIDPipe) storyId: string,
+    @Body() body: StoryReplyDto,
+  ) {
+    return this.storiesService.replyToStory(storyId, user.sub, body.text);
   }
 
   @Delete(':id')
