@@ -12,6 +12,9 @@ describe('NotificationService', () => {
     deleteOne: jest.Mock;
     deleteAll: jest.Mock;
   };
+  let userRepository: {
+    findById: jest.Mock;
+  };
 
   beforeEach(() => {
     repository = {
@@ -23,7 +26,10 @@ describe('NotificationService', () => {
       deleteOne: jest.fn(),
       deleteAll: jest.fn(),
     };
-    service = new NotificationService(repository as any);
+    userRepository = {
+      findById: jest.fn().mockResolvedValue({ fullName: 'Jane Doe' }),
+    };
+    service = new NotificationService(repository as any, { sendToToken: jest.fn(), sendBatch: jest.fn() } as any, userRepository as any);
   });
 
   it('returns paginated notifications and unread count', async () => {
@@ -79,6 +85,26 @@ describe('NotificationService', () => {
       }),
     ).resolves.toBeNull();
     expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('replaces the generic actor text with the real user name', async () => {
+    repository.create.mockResolvedValue({ id: 'notification-id' });
+
+    await service.createNotification('user-id', 'New like', 'Someone liked your post.', {
+      actorId: 'actor-id',
+      type: 'POST_LIKED',
+      entityType: 'VIDEO',
+      entityId: 'post-id',
+    });
+
+    expect(userRepository.findById).toHaveBeenCalledWith('actor-id');
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-id',
+        text: 'Jane Doe liked your post.',
+        actorId: 'actor-id',
+      }),
+    );
   });
 
   it('returns not found when marking someone else’s notification as read', async () => {

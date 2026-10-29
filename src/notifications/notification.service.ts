@@ -162,10 +162,12 @@ export class NotificationService {
       return null;
     }
 
+    const personalizedText = await this.personalizeText(text, metadata?.actorId);
+
     const saved = await this.notificationRepository.create({
       userId,
       title,
-      text,
+      text: personalizedText,
       actorId: metadata?.actorId,
       type: metadata?.type ?? 'GENERAL',
       entityType: metadata?.entityType,
@@ -173,7 +175,7 @@ export class NotificationService {
     });
 
     // Fire-and-forget FCM push
-    this.sendPush(userId, title, text, metadata).catch((err) =>
+    this.sendPush(userId, title, personalizedText, metadata).catch((err) =>
       this.logger.error(`FCM push failed for user ${userId}: ${err?.message ?? err}`),
     );
 
@@ -195,11 +197,13 @@ export class NotificationService {
     );
     if (!uniqueIds.length) return;
 
+    const personalizedText = await this.personalizeText(text, metadata?.actorId);
+
     await this.notificationRepository.createBulk(
       uniqueIds.map((uid) => ({
         userId: uid,
         title,
-        text,
+        text: personalizedText,
         actorId: metadata?.actorId,
         type: metadata?.type ?? 'GENERAL',
         entityType: metadata?.entityType,
@@ -208,12 +212,25 @@ export class NotificationService {
     );
 
     // Bulk FCM
-    this.sendBulkPush(uniqueIds, title, text, metadata).catch((err) =>
+    this.sendBulkPush(uniqueIds, title, personalizedText, metadata).catch((err) =>
       this.logger.error(`Bulk FCM failed: ${err?.message ?? err}`),
     );
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  private async personalizeText(text: string, actorId?: string) {
+    if (!text || !actorId) return text;
+
+    const actor = await this.userRepository.findById(actorId);
+    const actorName = actor?.fullName?.trim() || actor?.username?.trim() || 'Someone';
+
+    if (!/\bSomeone\b|\bsomeone\b/i.test(text)) {
+      return text;
+    }
+
+    return text.replace(/\bSomeone\b/gi, actorName);
+  }
 
   private async sendPush(
     userId: string,
