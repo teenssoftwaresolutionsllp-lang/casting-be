@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 
 import { DbModule } from './db/db.module';
+import { StorageModule } from './storage/storage.module';
 import { MediaModule } from './media/media.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './users/user.module';
@@ -37,6 +38,7 @@ import { HelpModule } from './help/help.module';
     
     // Application feature modules
     DbModule,
+    StorageModule,
     MediaModule,
     UserModule,
     AuthModule,

@@ -20,11 +20,11 @@ import {
   ApiTags,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { MediaService } from './media.service';
-import { VideoService } from '../videos/video.service';
+import { MediaService } from './media.service.js';
+import { VideoService } from '../videos/video.service.js';
 import type { Express } from 'express';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
 
 @ApiTags('Media')
 @Controller('media')
@@ -35,7 +35,7 @@ export class MediaController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload an image, video or PDF resume to Cloudinary' })
+  @ApiOperation({ summary: 'Upload an image, video or PDF resume to S3' })
   @ApiBody({
     description: 'File to upload',
     required: true,
@@ -48,14 +48,14 @@ export class MediaController {
   })
   @ApiResponse({
     status: 201,
-    description: 'Returns the secure upload URL from Cloudinary.',
+    description: 'Returns the upload URL and S3 key.',
   })
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-    const url = await this.mediaService.uploadFile(file);
-    return { url };
+    const { key, url } = await this.mediaService.uploadFile(file);
+    return { url, key };
   }
 }
 
@@ -90,15 +90,15 @@ export class PhotosController {
     @Body() body: Record<string, any>,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const url = await this.mediaService.uploadFile(file, 'photos');
+    const { key, url } = await this.mediaService.uploadFile(file, 'photos');
     
     // Save photo as a media item with category 'Photos' so it shows in feeds/portfolio
     const photoPost = await this.videoService.createVideo(user.sub, {
       category: 'Photos',
       title: body?.title || 'Untitled Photo',
       desc: body?.description || 'No description',
-      url,
-      thumb: url, // For photos, the photo URL itself is the thumbnail!
+      url: key,          // Store the S3 key in the database
+      thumb: key,        // For photos, the photo key itself is the thumbnail
     });
 
     // Return the full populated post details matching what the feed expects
@@ -134,7 +134,7 @@ export class VideoUploadController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 500 * 1024 * 1024 } }))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload a video file and get its Cloudinary URL' })
+  @ApiOperation({ summary: 'Upload a video file and get its S3 URL' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -152,15 +152,15 @@ export class VideoUploadController {
     @Body() body: Record<string, any>,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const url = await this.mediaService.uploadFile(file, 'videos');
+    const { key, url } = await this.mediaService.uploadFile(file, 'videos');
     
-    // Save to videos database table
+    // Save to videos database table – store the S3 key, not the URL
     const videoPost = await this.videoService.createVideo(user.sub, {
       category: body?.category || 'Films',
       title: body?.title || 'Untitled Video',
       desc: body?.description || 'No description',
-      url,
-      thumb: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=600&q=80',
+      url: key,
+      thumb: key, // Will be resolved when returned to client
     });
 
     // Return the full populated post details matching what the feed expects

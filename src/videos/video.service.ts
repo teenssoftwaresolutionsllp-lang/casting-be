@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { VideoRepository } from './video.repository';
-import { NotificationService } from '../notifications/notification.service';
-import { CreateVideoDto } from './dto/create-video.dto';
-import { CreateCommentDto } from './dto/create-comment.dto';
+import { VideoRepository } from './video.repository.js';
+import { NotificationService } from '../notifications/notification.service.js';
+import { CreateVideoDto } from './dto/create-video.dto.js';
+import { CreateCommentDto } from './dto/create-comment.dto.js';
+import { S3Service } from '../storage/s3.service.js';
 
 @Injectable()
 export class VideoService {
@@ -11,6 +12,7 @@ export class VideoService {
   constructor(
     private readonly videoRepository: VideoRepository,
     private readonly notificationService: NotificationService,
+    private readonly s3: S3Service,
   ) {}
 
   async createVideo(creatorId: string, dto: CreateVideoDto) {
@@ -27,22 +29,24 @@ export class VideoService {
   async findAll(userId: string, category?: string) {
     const list = await this.videoRepository.findAllWithUserLike(userId, category);
 
-    return list.map((v) => ({
-      id: v.id,
-      category: v.category,
-      creatorId: v.creatorId,
-      creatorName: v.creatorName || 'Anonymous',
-      creatorPic: v.creatorPic || this.defaultProfilePic,
-      creatorCategory: v.creatorCategory || 'Actor',
-      title: v.title,
-      desc: v.desc,
-      url: v.url,
-      thumb: v.thumb,
-      likesCount: v.likesCount,
-      viewsCount: v.viewsCount,
-      liked: !!v.likedUserId,
-      createdAt: v.createdAt,
-    }));
+    return Promise.all(
+      list.map(async (v) => ({
+        id: v.id,
+        category: v.category,
+        creatorId: v.creatorId,
+        creatorName: v.creatorName || 'Anonymous',
+        creatorPic: (await this.s3.resolveUrl(v.creatorPic)) || this.defaultProfilePic,
+        creatorCategory: v.creatorCategory || 'Actor',
+        title: v.title,
+        desc: v.desc,
+        url: (await this.s3.resolveUrl(v.url)) ?? v.url,
+        thumb: (await this.s3.resolveUrl(v.thumb)) ?? v.thumb,
+        likesCount: v.likesCount,
+        viewsCount: v.viewsCount,
+        liked: !!v.likedUserId,
+        createdAt: v.createdAt,
+      })),
+    );
   }
 
   async findOne(id: string, userId: string) {
@@ -56,12 +60,12 @@ export class VideoService {
       category: v.category,
       creatorId: v.creatorId,
       creatorName: v.creatorName || 'Anonymous',
-      creatorPic: v.creatorPic || this.defaultProfilePic,
+      creatorPic: (await this.s3.resolveUrl(v.creatorPic)) || this.defaultProfilePic,
       creatorCategory: v.creatorCategory || 'Actor',
       title: v.title,
       desc: v.desc,
-      url: v.url,
-      thumb: v.thumb,
+      url: (await this.s3.resolveUrl(v.url)) ?? v.url,
+      thumb: (await this.s3.resolveUrl(v.thumb)) ?? v.thumb,
       likesCount: v.likesCount,
       viewsCount: v.viewsCount,
       liked,
@@ -76,6 +80,14 @@ export class VideoService {
     }
     if (video.creatorId !== userId) {
       throw new ForbiddenException('You can only delete your own posts.');
+    }
+
+    // Delete S3 objects (skips legacy Cloudinary URLs)
+    if (this.s3.isS3Key(video.url)) {
+      await this.s3.delete(video.url).catch(() => undefined);
+    }
+    if (video.thumb !== video.url && this.s3.isS3Key(video.thumb)) {
+      await this.s3.delete(video.thumb).catch(() => undefined);
     }
 
     const deleted = await this.videoRepository.deleteByIdAndCreator(videoId, userId);
@@ -130,18 +142,20 @@ export class VideoService {
   async getComments(videoId: string, userId: string) {
     const commentsList = await this.videoRepository.getCommentsWithUserLike(videoId, userId);
 
-    return commentsList.map((c) => ({
-      id: c.id,
-      videoId: c.videoId,
-      userId: c.userId,
-      text: c.text,
-      likes: c.likesCount,
-      time: 'Just now',
-      author: c.author || 'Anonymous',
-      authorPic: c.authorPic || this.defaultProfilePic,
-      liked: !!c.likedUserId,
-      createdAt: c.createdAt,
-    }));
+    return Promise.all(
+      commentsList.map(async (c) => ({
+        id: c.id,
+        videoId: c.videoId,
+        userId: c.userId,
+        text: c.text,
+        likes: c.likesCount,
+        time: 'Just now',
+        author: c.author || 'Anonymous',
+        authorPic: (await this.s3.resolveUrl(c.authorPic)) || this.defaultProfilePic,
+        liked: !!c.likedUserId,
+        createdAt: c.createdAt,
+      })),
+    );
   }
 
   async postComment(videoId: string, userId: string, dto: CreateCommentDto) {

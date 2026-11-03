@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { MediaService } from '../media/media.service';
-import { StoriesRepository } from './stories.repository';
-import { NotificationService } from '../notifications/notification.service';
+import { MediaService } from '../media/media.service.js';
+import { StoriesRepository } from './stories.repository.js';
+import { NotificationService } from '../notifications/notification.service.js';
 
 const STORY_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
@@ -14,10 +14,10 @@ export class StoriesService {
   ) {}
 
   async create(creatorId: string, file: Express.Multer.File) {
-    const mediaUrl = await this.mediaService.uploadFile(file, 'stories');
+    const { key } = await this.mediaService.uploadFile(file, 'stories');
     return this.storiesRepository.create({
       creatorId,
-      mediaUrl,
+      mediaUrl: key, // Store S3 key instead of full URL
       mediaType: file.mimetype.startsWith('video/') ? 'video' : 'image',
       expiresAt: new Date(Date.now() + STORY_LIFETIME_MS),
     });
@@ -26,7 +26,21 @@ export class StoriesService {
   async getFeed(viewerId: string, requestedLimit = 20, requestedOffset = 0) {
     const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 50) : 20;
     const offset = Number.isFinite(requestedOffset) ? Math.max(Math.trunc(requestedOffset), 0) : 0;
-    return this.storiesRepository.getFeed(viewerId, limit, offset);
+    const result = await this.storiesRepository.getFeed(viewerId, limit, offset);
+
+    // Resolve all mediaUrl values (S3 keys → presigned URLs, legacy URLs pass through)
+    for (const group of result.stories) {
+      if (!group) continue;
+      // Resolve creator pic
+      if (group.creatorPic) {
+        group.creatorPic = await this.mediaService.resolveUrl(group.creatorPic);
+      }
+      for (const item of group.items) {
+        item.mediaUrl = (await this.mediaService.resolveUrl(item.mediaUrl)) ?? item.mediaUrl;
+      }
+    }
+
+    return result;
   }
 
   async markViewed(storyId: string, viewerId: string) {
@@ -46,6 +60,8 @@ export class StoriesService {
     if (story.creatorId !== userId) {
       throw new ForbiddenException('You can only delete your own stories.');
     }
+    // Delete S3 object (skips legacy Cloudinary URLs automatically)
+    await this.mediaService.deleteFile(story.mediaUrl);
     await this.storiesRepository.deleteById(storyId);
     return { deleted: true };
   }

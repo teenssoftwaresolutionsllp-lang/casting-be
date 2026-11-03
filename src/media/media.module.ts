@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { MediaService } from './media.service';
-import { MediaController, PhotosController, VideoUploadController } from './media.controller';
-import { VideoModule } from '../videos/video.module';
-import { UserModule } from '../users/user.module';
+import { MediaService } from './media.service.js';
+import { MediaController, PhotosController, VideoUploadController } from './media.controller.js';
+import { VideoModule } from '../videos/video.module.js';
+import { UserModule } from '../users/user.module.js';
 
 @Module({
-  imports: [ConfigModule, VideoModule, UserModule],
+  imports: [VideoModule, UserModule],
   controllers: [MediaController, PhotosController, VideoUploadController],
   providers: [MediaService],
   exports: [MediaService],
