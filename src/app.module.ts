@@ -16,6 +16,7 @@ import { ActivityLogModule } from './activity-log/activity-log.module';
 import { AdminModule } from './admin/admin.module';
 import { FaceModule } from './face/face.module';
 import { StatsModule } from './stats/stats.module';
+import { HelpModule } from './help/help.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { StatsModule } from './stats/stats.module';
     AdminModule,
     FaceModule,
     StatsModule,
+    HelpModule,
   ],
 })
 export class AppModule {}

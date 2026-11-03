@@ -31,12 +31,7 @@ export type NotificationType =
   | 'AUDITION_UPDATED';
 
 export type NotificationEntityType =
-  | 'VIDEO'
-  | 'AUDITION'
-  | 'APPLICATION'
-  | 'STORY'
-  | 'CHAT'
-  | 'USER';
+  'VIDEO' | 'AUDITION' | 'APPLICATION' | 'STORY' | 'CHAT' | 'USER';
 
 // ─── Notification metadata passed by callers ────────────────────────────────
 
@@ -101,11 +96,16 @@ export class NotificationService {
   }
 
   async getUnreadCount(userId: string) {
-    return { unreadCount: await this.notificationRepository.countUnread(userId) };
+    return {
+      unreadCount: await this.notificationRepository.countUnread(userId),
+    };
   }
 
   async markAsRead(userId: string, notificationId: string) {
-    const updated = await this.notificationRepository.markAsRead(userId, notificationId);
+    const updated = await this.notificationRepository.markAsRead(
+      userId,
+      notificationId,
+    );
     if (!updated) {
       throw new NotFoundException('Notification not found.');
     }
@@ -118,7 +118,10 @@ export class NotificationService {
   }
 
   async deleteOne(userId: string, notificationId: string) {
-    const deleted = await this.notificationRepository.deleteOne(userId, notificationId);
+    const deleted = await this.notificationRepository.deleteOne(
+      userId,
+      notificationId,
+    );
     if (!deleted) {
       throw new NotFoundException('Notification not found.');
     }
@@ -162,7 +165,10 @@ export class NotificationService {
       return null;
     }
 
-    const personalizedText = await this.personalizeText(text, metadata?.actorId);
+    const personalizedText = await this.personalizeText(
+      text,
+      metadata?.actorId,
+    );
 
     const saved = await this.notificationRepository.create({
       userId,
@@ -175,11 +181,39 @@ export class NotificationService {
     });
 
     // Fire-and-forget FCM push
-    this.sendPush(userId, title, personalizedText, metadata).catch((err) =>
-      this.logger.error(`FCM push failed for user ${userId}: ${err?.message ?? err}`),
+    this.sendPush(userId, title, personalizedText, metadata).catch(
+      (error: unknown) =>
+        this.logger.error(
+          `FCM push failed for user ${userId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        ),
     );
 
     return saved;
+  }
+
+  async sendPushForPersistedNotification(
+    userId: string,
+    title: string,
+    text: string,
+    metadata?: CreateNotificationMeta,
+  ) {
+    try {
+      const personalizedText = await this.personalizeText(
+        text,
+        metadata?.actorId,
+      );
+      await this.sendPush(userId, title, personalizedText, metadata);
+    } catch (error) {
+      this.logger.error(
+        `FCM push failed for user ${userId}: ${error instanceof Error ? error.message : error}`,
+      );
+    }
+  }
+
+  personalizeNotificationText(text: string, actorId?: string) {
+    return this.personalizeText(text, actorId);
   }
 
   /**
@@ -197,7 +231,10 @@ export class NotificationService {
     );
     if (!uniqueIds.length) return;
 
-    const personalizedText = await this.personalizeText(text, metadata?.actorId);
+    const personalizedText = await this.personalizeText(
+      text,
+      metadata?.actorId,
+    );
 
     await this.notificationRepository.createBulk(
       uniqueIds.map((uid) => ({
@@ -212,8 +249,13 @@ export class NotificationService {
     );
 
     // Bulk FCM
-    this.sendBulkPush(uniqueIds, title, personalizedText, metadata).catch((err) =>
-      this.logger.error(`Bulk FCM failed: ${err?.message ?? err}`),
+    this.sendBulkPush(uniqueIds, title, personalizedText, metadata).catch(
+      (error: unknown) =>
+        this.logger.error(
+          `Bulk FCM failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        ),
     );
   }
 
@@ -223,7 +265,8 @@ export class NotificationService {
     if (!text || !actorId) return text;
 
     const actor = await this.userRepository.findById(actorId);
-    const actorName = actor?.fullName?.trim() || actor?.username?.trim() || 'Someone';
+    const actorName =
+      actor?.fullName?.trim() || actor?.username?.trim() || 'Someone';
 
     if (!/\bSomeone\b|\bsomeone\b/i.test(text)) {
       return text;
@@ -244,7 +287,7 @@ export class NotificationService {
     const payload: FcmPayload = {
       title,
       body,
-      data: this.buildFcmData(metadata),
+      data: this.buildFcmData(metadata, title, body),
     };
 
     const success = await this.fcmService.sendToToken(user.fcmToken, payload);
@@ -260,11 +303,13 @@ export class NotificationService {
     body: string,
     metadata?: CreateNotificationMeta,
   ) {
-    // Fetch all users' FCM tokens in a single query
-    const users = await this.userRepository.findByIds(userIds);
+    // Fetch each user's FCM token using the repository's available lookup.
+    const users = await Promise.all(
+      userIds.map((userId) => this.userRepository.findById(userId)),
+    );
     const tokenToUserId: Record<string, string> = {};
     for (const user of users) {
-      if (user.fcmToken) {
+      if (user?.fcmToken) {
         tokenToUserId[user.fcmToken] = user.id;
       }
     }
@@ -275,24 +320,35 @@ export class NotificationService {
     const payload: FcmPayload = {
       title,
       body,
-      data: this.buildFcmData(metadata),
+      data: this.buildFcmData(metadata, title, body),
     };
 
-    const invalidTokens = await this.fcmService.sendToMultipleTokens(tokens, payload);
+    const invalidTokens = await this.fcmService.sendToMultipleTokens(
+      tokens,
+      payload,
+    );
 
     // Clean up invalid tokens concurrently
     if (invalidTokens.length) {
       await Promise.allSettled(
         invalidTokens.map((tok) => {
           const uid = tokenToUserId[tok];
-          return uid ? this.userRepository.update(uid, { fcmToken: null }) : Promise.resolve();
+          return uid
+            ? this.userRepository.update(uid, { fcmToken: null })
+            : Promise.resolve();
         }),
       );
     }
   }
 
-  private buildFcmData(metadata?: CreateNotificationMeta): Record<string, string> {
+  private buildFcmData(
+    metadata?: CreateNotificationMeta,
+    title?: string,
+    body?: string,
+  ): Record<string, string> {
     const data: Record<string, string> = {};
+    if (title) data['title'] = title;
+    if (body) data['body'] = body;
     if (metadata?.type) data['type'] = metadata.type;
     if (metadata?.entityType) data['entityType'] = metadata.entityType;
     if (metadata?.entityId) data['entityId'] = metadata.entityId;
@@ -302,7 +358,9 @@ export class NotificationService {
 
   private validatePagination(limit: number, offset: number) {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-      throw new BadRequestException('limit must be an integer between 1 and 100.');
+      throw new BadRequestException(
+        'limit must be an integer between 1 and 100.',
+      );
     }
     if (!Number.isInteger(offset) || offset < 0) {
       throw new BadRequestException('offset must be a non-negative integer.');

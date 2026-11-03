@@ -84,7 +84,11 @@ export class StatsRepository {
         .groupBy(sql`trim(${schema.users.state})`)
         .orderBy(sql`count(*) desc`),
       this.db
-        .select({ total: sql<number>`count(*)::int` })
+        .select({
+          total: sql<number>`count(*)::int`,
+          live: sql<number>`count(*) filter (where ${schema.auditions.status} = 'OPEN')::int`,
+          closed: sql<number>`count(*) filter (where ${schema.auditions.status} = 'CLOSED')::int`,
+        })
         .from(schema.auditions),
       this.db
         .select({
@@ -140,8 +144,8 @@ export class StatsRepository {
       auditions: {
         total: auditionCounts.total,
         byCraft: auditionCrafts,
-        live: null,
-        closed: null,
+        live: auditionCounts.live,
+        closed: auditionCounts.closed,
       },
       applications: {
         total: applicationCounts.total,

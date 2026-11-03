@@ -6,7 +6,7 @@ import { AuditionModule } from '../auditions/audition.module';
 import { NotificationModule } from '../notifications/notification.module';
 
 @Module({
-  imports: [forwardRef(() => AuditionModule), forwardRef(() => NotificationModule)],
+  imports: [forwardRef(() => AuditionModule), NotificationModule],
   controllers: [ApplicationController],
   providers: [ApplicationService, ApplicationRepository],
   exports: [ApplicationService, ApplicationRepository],

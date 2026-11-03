@@ -190,6 +190,7 @@ export class AdminRepository {
         id: schema.auditions.id,
         title: schema.auditions.title,
         category: schema.auditions.category,
+        status: schema.auditions.status,
       })
       .from(schema.auditions)
       .where(eq(schema.auditions.creatorId, userId))
@@ -202,6 +203,7 @@ export class AdminRepository {
         id: schema.applications.id,
         status: schema.applications.status,
         auditionTitle: schema.auditions.title,
+        auditionStatus: schema.auditions.status,
       })
       .from(schema.applications)
       .leftJoin(schema.auditions, eq(schema.applications.auditionId, schema.auditions.id))

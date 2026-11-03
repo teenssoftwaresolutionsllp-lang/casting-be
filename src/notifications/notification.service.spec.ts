@@ -3,6 +3,10 @@ import { NotificationService } from './notification.service';
 
 describe('NotificationService', () => {
   let service: NotificationService;
+  let fcmService: {
+    sendToToken: jest.Mock;
+    sendToMultipleTokens: jest.Mock;
+  };
   let repository: {
     findByUserId: jest.Mock;
     countUnread: jest.Mock;
@@ -29,7 +33,15 @@ describe('NotificationService', () => {
     userRepository = {
       findById: jest.fn().mockResolvedValue({ fullName: 'Jane Doe' }),
     };
-    service = new NotificationService(repository as any, { sendToToken: jest.fn(), sendBatch: jest.fn() } as any, userRepository as any);
+    fcmService = {
+      sendToToken: jest.fn().mockResolvedValue(true),
+      sendToMultipleTokens: jest.fn().mockResolvedValue([]),
+    };
+    service = new NotificationService(
+      repository as any,
+      fcmService as any,
+      userRepository as any,
+    );
   });
 
   it('returns paginated notifications and unread count', async () => {
@@ -69,20 +81,25 @@ describe('NotificationService', () => {
   });
 
   it('rejects invalid pagination values', async () => {
-    await expect(service.getMyNotifications('user-id', 101, 0)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
-    await expect(service.getMyNotifications('user-id', 20, -1)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.getMyNotifications('user-id', 101, 0),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.getMyNotifications('user-id', 20, -1),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('does not create a notification when actor is its recipient', async () => {
     await expect(
-      service.createNotification('same-user', 'New like', 'Someone liked your post.', {
-        actorId: 'same-user',
-        type: 'POST_LIKED',
-      }),
+      service.createNotification(
+        'same-user',
+        'New like',
+        'Someone liked your post.',
+        {
+          actorId: 'same-user',
+          type: 'POST_LIKED',
+        },
+      ),
     ).resolves.toBeNull();
     expect(repository.create).not.toHaveBeenCalled();
   });
@@ -90,12 +107,17 @@ describe('NotificationService', () => {
   it('replaces the generic actor text with the real user name', async () => {
     repository.create.mockResolvedValue({ id: 'notification-id' });
 
-    await service.createNotification('user-id', 'New like', 'Someone liked your post.', {
-      actorId: 'actor-id',
-      type: 'POST_LIKED',
-      entityType: 'VIDEO',
-      entityId: 'post-id',
-    });
+    await service.createNotification(
+      'user-id',
+      'New like',
+      'Someone liked your post.',
+      {
+        actorId: 'actor-id',
+        type: 'POST_LIKED',
+        entityType: 'VIDEO',
+        entityId: 'post-id',
+      },
+    );
 
     expect(userRepository.findById).toHaveBeenCalledWith('actor-id');
     expect(repository.create).toHaveBeenCalledWith(
@@ -103,6 +125,45 @@ describe('NotificationService', () => {
         userId: 'user-id',
         text: 'Jane Doe liked your post.',
         actorId: 'actor-id',
+      }),
+    );
+  });
+
+  it('includes the notification title and body in the FCM data payload', async () => {
+    repository.create.mockResolvedValue({ id: 'notification-id' });
+    userRepository.findById.mockImplementation((userId: string) =>
+      Promise.resolve(
+        userId === 'actor-id'
+          ? { fullName: 'Jane Doe' }
+          : { fcmToken: 'device-token' },
+      ),
+    );
+
+    await service.createNotification(
+      'recipient-id',
+      'New like',
+      'Someone liked your post.',
+      {
+        actorId: 'actor-id',
+        type: 'POST_LIKED',
+        entityType: 'VIDEO',
+        entityId: 'post-id',
+      },
+    );
+
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(fcmService.sendToToken).toHaveBeenCalledWith(
+      'device-token',
+      expect.objectContaining({
+        title: 'New like',
+        body: 'Jane Doe liked your post.',
+        data: expect.objectContaining({
+          title: 'New like',
+          body: 'Jane Doe liked your post.',
+          type: 'POST_LIKED',
+          entityType: 'VIDEO',
+          entityId: 'post-id',
+        }),
       }),
     );
   });

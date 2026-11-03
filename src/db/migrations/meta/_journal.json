@@ -50,6 +50,13 @@
       "when": 1793266390280,
       "tag": "0006_bent_paper_doll",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793345307948,
+      "tag": "0007_shocking_maverick",
+      "breakpoints": true
     }
   ]
 }

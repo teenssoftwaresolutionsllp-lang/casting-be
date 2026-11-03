@@ -1,6 +1,21 @@
-import { pgTable, uuid, text, integer, boolean, timestamp, primaryKey, jsonb, index, real, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  boolean,
+  timestamp,
+  primaryKey,
+  jsonb,
+  index,
+  real,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
+
+const timestampWithTimezone = (name: string) =>
+  timestamp(name, { withTimezone: true });
 
 // ==========================================
 // USERS TABLE
@@ -12,7 +27,7 @@ export const users = pgTable('users', {
   mobile: text('mobile').unique(),
   password: text('password').notNull(),
   passwordResetTokenHash: text('password_reset_token_hash'),
-  passwordResetExpiresAt: timestamp('password_reset_expires_at'),
+  passwordResetExpiresAt: timestampWithTimezone('password_reset_expires_at'),
   fullName: text('full_name').notNull(),
   age: integer('age'),
   stageName: text('stage_name'),
@@ -25,7 +40,7 @@ export const users = pgTable('users', {
   postalCode: text('postal_code'),
   profilePhoto: text('profile_photo'),
   role: text('role').notNull(), // 'artist' | 'audience'
-  
+
   // Professional Specs (Artist role)
   category: text('category'), // 'Actor' | 'Actress' | 'Model' | 'Dancer' etc.
   experience: text('experience'),
@@ -66,136 +81,210 @@ export const users = pgTable('users', {
   trkCode: text('trk_code').unique(), // Auto-generated: TRK260001, TRK260002...
   emailVerified: boolean('email_verified').default(false).notNull(),
   fcmToken: text('fcm_token'), // Firebase Cloud Messaging device push token
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
+  updatedAt: timestampWithTimezone('updated_at').defaultNow().notNull(),
 });
 
 // ==========================================
 // FACE VERIFICATION
 // ==========================================
-export const faceTemplates = pgTable('face_templates', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  templateEncrypted: text('template_encrypted').notNull(),
-  iv: text('iv').notNull(),
-  authTag: text('auth_tag').notNull(),
-  keyVersion: integer('key_version').notNull(),
-  modelVersion: text('model_version').notNull(),
-  status: text('status').default('active').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  revokedAt: timestamp('revoked_at'),
-}, (table) => [
-  uniqueIndex('face_templates_one_active_per_user_idx')
-    .on(table.userId)
-    .where(sql`${table.status} = 'active'`),
-  index('face_templates_user_status_idx').on(table.userId, table.status),
-]);
+export const faceTemplates = pgTable(
+  'face_templates',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    templateEncrypted: text('template_encrypted').notNull(),
+    iv: text('iv').notNull(),
+    authTag: text('auth_tag').notNull(),
+    keyVersion: integer('key_version').notNull(),
+    modelVersion: text('model_version').notNull(),
+    status: text('status').default('active').notNull(),
+    createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
+    revokedAt: timestampWithTimezone('revoked_at'),
+  },
+  (table) => [
+    uniqueIndex('face_templates_one_active_per_user_idx')
+      .on(table.userId)
+      .where(sql`${table.status} = 'active'`),
+    index('face_templates_user_status_idx').on(table.userId, table.status),
+  ],
+);
 
-export const faceChallenges = pgTable('face_challenges', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  nonce: text('nonce').notNull(),
-  purpose: text('purpose').notNull(),
-  expiresAt: timestamp('expires_at').notNull(),
-  usedAt: timestamp('used_at'),
-}, (table) => [
-  index('face_challenges_user_expiry_idx').on(table.userId, table.expiresAt),
-]);
+export const faceChallenges = pgTable(
+  'face_challenges',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    nonce: text('nonce').notNull(),
+    purpose: text('purpose').notNull(),
+    expiresAt: timestampWithTimezone('expires_at').notNull(),
+    usedAt: timestampWithTimezone('used_at'),
+  },
+  (table) => [
+    index('face_challenges_user_expiry_idx').on(table.userId, table.expiresAt),
+  ],
+);
 
-export const faceAttempts = pgTable('face_attempts', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  challengeId: uuid('challenge_id').references(() => faceChallenges.id, { onDelete: 'set null' }),
-  purpose: text('purpose'),
-  result: text('result').notNull(),
-  similarityScore: real('similarity_score'),
-  livenessPassed: boolean('liveness_passed').notNull(),
-  deviceId: text('device_id'),
-  ip: text('ip'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => [
-  index('face_attempts_user_created_idx').on(table.userId, table.createdAt),
-  index('face_attempts_user_ip_created_idx').on(table.userId, table.ip, table.createdAt),
-]);
+export const faceAttempts = pgTable(
+  'face_attempts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    challengeId: uuid('challenge_id').references(() => faceChallenges.id, {
+      onDelete: 'set null',
+    }),
+    purpose: text('purpose'),
+    result: text('result').notNull(),
+    similarityScore: real('similarity_score'),
+    livenessPassed: boolean('liveness_passed').notNull(),
+    deviceId: text('device_id'),
+    ip: text('ip'),
+    createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('face_attempts_user_created_idx').on(table.userId, table.createdAt),
+    index('face_attempts_user_ip_created_idx').on(
+      table.userId,
+      table.ip,
+      table.createdAt,
+    ),
+  ],
+);
 
-export const biometricConsents = pgTable('biometric_consents', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  consentVersion: text('consent_version').notNull(),
-  acceptedAt: timestamp('accepted_at').defaultNow().notNull(),
-}, (table) => [
-  index('biometric_consents_user_accepted_idx').on(table.userId, table.acceptedAt),
-]);
+export const biometricConsents = pgTable(
+  'biometric_consents',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    consentVersion: text('consent_version').notNull(),
+    acceptedAt: timestampWithTimezone('accepted_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('biometric_consents_user_accepted_idx').on(
+      table.userId,
+      table.acceptedAt,
+    ),
+  ],
+);
 
 // ==========================================
 // STORIES (24-hour media posts)
 // ==========================================
-export const stories = pgTable('stories', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  mediaUrl: text('media_url').notNull(),
-  mediaType: text('media_type').notNull(),
-  expiresAt: timestamp('expires_at').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => [
-  index('stories_expires_at_idx').on(table.expiresAt),
-  index('stories_creator_created_at_idx').on(table.creatorId, table.createdAt),
-]);
+export const stories = pgTable(
+  'stories',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    creatorId: uuid('creator_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    mediaUrl: text('media_url').notNull(),
+    mediaType: text('media_type').notNull(),
+    expiresAt: timestampWithTimezone('expires_at').notNull(),
+    createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('stories_expires_at_idx').on(table.expiresAt),
+    index('stories_creator_created_at_idx').on(
+      table.creatorId,
+      table.createdAt,
+    ),
+  ],
+);
 
-export const storyViews = pgTable('story_views', {
-  storyId: uuid('story_id').references(() => stories.id, { onDelete: 'cascade' }).notNull(),
-  viewerId: uuid('viewer_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  viewedAt: timestamp('viewed_at').defaultNow().notNull(),
-}, (table) => [
-  primaryKey({ columns: [table.storyId, table.viewerId] }),
-]);
+export const storyViews = pgTable(
+  'story_views',
+  {
+    storyId: uuid('story_id')
+      .references(() => stories.id, { onDelete: 'cascade' })
+      .notNull(),
+    viewerId: uuid('viewer_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    viewedAt: timestampWithTimezone('viewed_at').defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.storyId, table.viewerId] })],
+);
 
 // ==========================================
 // STORY LIKES TABLE
 // ==========================================
-export const storyLikes = pgTable('story_likes', {
-  storyId: uuid('story_id').references(() => stories.id, { onDelete: 'cascade' }).notNull(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => [
-  primaryKey({ columns: [table.storyId, table.userId] }),
-  index('story_likes_user_id_idx').on(table.userId),
-]);
+export const storyLikes = pgTable(
+  'story_likes',
+  {
+    storyId: uuid('story_id')
+      .references(() => stories.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.storyId, table.userId] }),
+    index('story_likes_user_id_idx').on(table.userId),
+  ],
+);
 
 // ==========================================
 // STORY REPLIES TABLE
 // ==========================================
-export const storyReplies = pgTable('story_replies', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  storyId: uuid('story_id').references(() => stories.id, { onDelete: 'cascade' }).notNull(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  text: text('text').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => [
-  index('story_replies_story_id_idx').on(table.storyId),
-  index('story_replies_user_id_idx').on(table.userId),
-]);
+export const storyReplies = pgTable(
+  'story_replies',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    storyId: uuid('story_id')
+      .references(() => stories.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    text: text('text').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('story_replies_story_id_idx').on(table.storyId),
+    index('story_replies_user_id_idx').on(table.userId),
+  ],
+);
 
 // ==========================================
 // FOLLOWS RELATIONSHIP TABLE (Self-referencing Many-to-Many)
 // ==========================================
-export const follows = pgTable('follows', {
-  followerId: uuid('follower_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  followingId: uuid('following_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-}, (table) => [
+export const follows = pgTable(
+  'follows',
   {
-    pk: primaryKey({ columns: [table.followerId, table.followingId] }),
+    followerId: uuid('follower_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    followingId: uuid('following_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
   },
-  index('follows_follower_id_idx').on(table.followerId),
-  index('follows_following_id_idx').on(table.followingId),
-]);
+  (table) => [
+    {
+      pk: primaryKey({ columns: [table.followerId, table.followingId] }),
+    },
+    index('follows_follower_id_idx').on(table.followerId),
+    index('follows_following_id_idx').on(table.followingId),
+  ],
+);
 
 // ==========================================
 // VIDEOS TABLE
 // ==========================================
 export const videos = pgTable('videos', {
   id: uuid('id').defaultRandom().primaryKey(),
-  creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  creatorId: uuid('creator_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   category: text('category').notNull(), // 'Films' | 'Ads' | 'TV' | 'Music Videos'
   title: text('title').notNull(),
   desc: text('desc').notNull(),
@@ -203,55 +292,77 @@ export const videos = pgTable('videos', {
   thumb: text('thumb').notNull(), // Thumbnail URL
   viewsCount: integer('views_count').default(0).notNull(),
   likesCount: integer('likes_count').default(0).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
 });
 
 // ==========================================
 // VIDEO LIKES TABLE
 // ==========================================
-export const videoLikes = pgTable('video_likes', {
-  videoId: uuid('video_id').references(() => videos.id, { onDelete: 'cascade' }).notNull(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-}, (table) => [
+export const videoLikes = pgTable(
+  'video_likes',
   {
-    pk: primaryKey({ columns: [table.videoId, table.userId] }),
+    videoId: uuid('video_id')
+      .references(() => videos.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
   },
-  index('video_likes_user_id_idx').on(table.userId),
-  index('video_likes_video_id_idx').on(table.videoId),
-]);
+  (table) => [
+    {
+      pk: primaryKey({ columns: [table.videoId, table.userId] }),
+    },
+    index('video_likes_user_id_idx').on(table.userId),
+    index('video_likes_video_id_idx').on(table.videoId),
+  ],
+);
 
 // ==========================================
 // COMMENTS TABLE
 // ==========================================
 export const comments = pgTable('comments', {
   id: uuid('id').defaultRandom().primaryKey(),
-  videoId: uuid('video_id').references(() => videos.id, { onDelete: 'cascade' }).notNull(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  videoId: uuid('video_id')
+    .references(() => videos.id, { onDelete: 'cascade' })
+    .notNull(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   text: text('text').notNull(),
   likesCount: integer('likes_count').default(0).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
 });
 
 // ==========================================
 // COMMENT LIKES TABLE
 // ==========================================
-export const commentLikes = pgTable('comment_likes', {
-  commentId: uuid('comment_id').references(() => comments.id, { onDelete: 'cascade' }).notNull(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-}, (table) => [
+export const commentLikes = pgTable(
+  'comment_likes',
   {
-    pk: primaryKey({ columns: [table.commentId, table.userId] }),
+    commentId: uuid('comment_id')
+      .references(() => comments.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
   },
-  index('comment_likes_user_id_idx').on(table.userId),
-  index('comment_likes_comment_id_idx').on(table.commentId),
-]);
+  (table) => [
+    {
+      pk: primaryKey({ columns: [table.commentId, table.userId] }),
+    },
+    index('comment_likes_user_id_idx').on(table.userId),
+    index('comment_likes_comment_id_idx').on(table.commentId),
+  ],
+);
 
 // ==========================================
 // AUDITIONS TABLE (Casting Calls)
 // ==========================================
 export const auditions = pgTable('auditions', {
   id: uuid('id').defaultRandom().primaryKey(),
-  creatorId: uuid('creator_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  creatorId: uuid('creator_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   title: text('title').notNull(),
   category: text('category').notNull(), // Cinema craft category
   role: text('role').notNull(),
@@ -263,7 +374,8 @@ export const auditions = pgTable('auditions', {
   deadline: text('deadline').notNull(),
   lang: text('lang').notNull(),
   desc: text('desc').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  status: text('status').default('OPEN').notNull(), // 'OPEN' | 'CLOSED'
+  createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
 });
 
 // ==========================================
@@ -271,12 +383,18 @@ export const auditions = pgTable('auditions', {
 // ==========================================
 export const applications = pgTable('applications', {
   id: uuid('id').defaultRandom().primaryKey(),
-  auditionId: uuid('audition_id').references(() => auditions.id, { onDelete: 'cascade' }).notNull(),
-  applicantId: uuid('applicant_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  auditionId: uuid('audition_id')
+    .references(() => auditions.id, { onDelete: 'cascade' })
+    .notNull(),
+  applicantId: uuid('applicant_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   coverLetter: text('cover_letter').notNull(),
   status: text('status').default('PENDING').notNull(), // 'PENDING' | 'SHORTLISTED' | 'ACCEPTED' | 'REJECTED'
-  details: text('details').default('Pending selection decision callback from review agency panel.').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  details: text('details')
+    .default('Pending selection decision callback from review agency panel.')
+    .notNull(),
+  createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
 });
 
 // ==========================================
@@ -284,71 +402,100 @@ export const applications = pgTable('applications', {
 // ==========================================
 export const chats = pgTable('chats', {
   id: uuid('id').defaultRandom().primaryKey(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
 });
 
 // ==========================================
 // CHAT PARTICIPANTS TABLE
 // ==========================================
-export const chatParticipants = pgTable('chat_participants', {
-  chatId: uuid('chat_id').references(() => chats.id, { onDelete: 'cascade' }).notNull(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-}, (table) => {
-  return [
-    {
-      pk: primaryKey({ columns: [table.chatId, table.userId] }),
-    }
-  ];
-});
+export const chatParticipants = pgTable(
+  'chat_participants',
+  {
+    chatId: uuid('chat_id')
+      .references(() => chats.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+  },
+  (table) => {
+    return [
+      {
+        pk: primaryKey({ columns: [table.chatId, table.userId] }),
+      },
+    ];
+  },
+);
 
 // ==========================================
 // MESSAGES TABLE
 // ==========================================
 export const messages = pgTable('messages', {
   id: uuid('id').defaultRandom().primaryKey(),
-  chatId: uuid('chat_id').references(() => chats.id, { onDelete: 'cascade' }).notNull(),
-  senderId: uuid('sender_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  chatId: uuid('chat_id')
+    .references(() => chats.id, { onDelete: 'cascade' })
+    .notNull(),
+  senderId: uuid('sender_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
   text: text('text').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
 });
 
 // ==========================================
 // NOTIFICATIONS TABLE
 // ==========================================
-export const notifications = pgTable('notifications', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  actorId: uuid('actor_id').references(() => users.id, { onDelete: 'set null' }),
-  type: text('type').default('GENERAL').notNull(),
-  title: text('title').notNull(),
-  text: text('text').notNull(),
-  entityType: text('entity_type'),
-  entityId: text('entity_id'),
-  read: boolean('read').default(false).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => [
-  index('notifications_user_created_at_idx').on(table.userId, table.createdAt),
-  index('notifications_user_read_idx').on(table.userId, table.read),
-]);
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    actorId: uuid('actor_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    type: text('type').default('GENERAL').notNull(),
+    title: text('title').notNull(),
+    text: text('text').notNull(),
+    entityType: text('entity_type'),
+    entityId: text('entity_id'),
+    read: boolean('read').default(false).notNull(),
+    createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('notifications_user_created_at_idx').on(
+      table.userId,
+      table.createdAt,
+    ),
+    index('notifications_user_read_idx').on(table.userId, table.read),
+  ],
+);
 
 // ==========================================
 // ACTIVITY LOGS TABLE (Audit Trail)
 // ==========================================
-export const activityLogs = pgTable('activity_logs', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
-  action: text('action').notNull(), // 'REGISTER', 'LOGIN', 'PROFILE_UPDATE', 'VIDEO_UPLOAD', 'AUDITION_CREATE', 'APPLICATION_SUBMIT', 'FOLLOW', 'UNFOLLOW', 'STORY_CREATE', 'COMMENT', 'LIKE', 'REPORT', 'ADMIN_LOGIN', 'PASSWORD_CHANGE'
-  entity: text('entity'), // 'user', 'video', 'audition', 'application', 'story', 'comment'
-  entityId: text('entity_id'), // ID of the related entity
-  details: jsonb('details').$type<Record<string, any>>(), // Additional context data
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-}, (table) => [
-  index('activity_logs_user_id_idx').on(table.userId),
-  index('activity_logs_action_idx').on(table.action),
-  index('activity_logs_created_at_idx').on(table.createdAt),
-]);
+export const activityLogs = pgTable(
+  'activity_logs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    action: text('action').notNull(), // 'REGISTER', 'LOGIN', 'PROFILE_UPDATE', 'VIDEO_UPLOAD', 'AUDITION_CREATE', 'APPLICATION_SUBMIT', 'FOLLOW', 'UNFOLLOW', 'STORY_CREATE', 'COMMENT', 'LIKE', 'REPORT', 'ADMIN_LOGIN', 'PASSWORD_CHANGE'
+    entity: text('entity'), // 'user', 'video', 'audition', 'application', 'story', 'comment'
+    entityId: text('entity_id'), // ID of the related entity
+    details: jsonb('details').$type<Record<string, any>>(), // Additional context data
+    ipAddress: text('ip_address'),
+    userAgent: text('user_agent'),
+    createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('activity_logs_user_id_idx').on(table.userId),
+    index('activity_logs_action_idx').on(table.action),
+    index('activity_logs_created_at_idx').on(table.createdAt),
+  ],
+);
 
 // ==========================================
 // ADMIN USERS TABLE (Separate admin credentials)
@@ -360,8 +507,8 @@ export const adminUsers = pgTable('admin_users', {
   fullName: text('full_name').notNull(),
   role: text('role').default('admin').notNull(), // 'admin' | 'super_admin'
   isActive: boolean('is_active').default(true).notNull(),
-  lastLoginAt: timestamp('last_login_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  lastLoginAt: timestampWithTimezone('last_login_at'),
+  createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),
 });
 
 // ==========================================
@@ -398,18 +545,30 @@ export const commentsRelations = relations(comments, ({ one, many }) => ({
 }));
 
 export const commentLikesRelations = relations(commentLikes, ({ one }) => ({
-  comment: one(comments, { fields: [commentLikes.commentId], references: [comments.id] }),
+  comment: one(comments, {
+    fields: [commentLikes.commentId],
+    references: [comments.id],
+  }),
   user: one(users, { fields: [commentLikes.userId], references: [users.id] }),
 }));
 
 export const auditionsRelations = relations(auditions, ({ one, many }) => ({
-  creator: one(users, { fields: [auditions.creatorId], references: [users.id] }),
+  creator: one(users, {
+    fields: [auditions.creatorId],
+    references: [users.id],
+  }),
   applications: many(applications),
 }));
 
 export const applicationsRelations = relations(applications, ({ one }) => ({
-  audition: one(auditions, { fields: [applications.auditionId], references: [auditions.id] }),
-  applicant: one(users, { fields: [applications.applicantId], references: [users.id] }),
+  audition: one(auditions, {
+    fields: [applications.auditionId],
+    references: [auditions.id],
+  }),
+  applicant: one(users, {
+    fields: [applications.applicantId],
+    references: [users.id],
+  }),
 }));
 
 export const chatsRelations = relations(chats, ({ many }) => ({
@@ -417,10 +576,19 @@ export const chatsRelations = relations(chats, ({ many }) => ({
   messages: many(messages),
 }));
 
-export const chatParticipantsRelations = relations(chatParticipants, ({ one }) => ({
-  chat: one(chats, { fields: [chatParticipants.chatId], references: [chats.id] }),
-  user: one(users, { fields: [chatParticipants.userId], references: [users.id] }),
-}));
+export const chatParticipantsRelations = relations(
+  chatParticipants,
+  ({ one }) => ({
+    chat: one(chats, {
+      fields: [chatParticipants.chatId],
+      references: [chats.id],
+    }),
+    user: one(users, {
+      fields: [chatParticipants.userId],
+      references: [users.id],
+    }),
+  }),
+);
 
 export const messagesRelations = relations(messages, ({ one }) => ({
   chat: one(chats, { fields: [messages.chatId], references: [chats.id] }),

@@ -223,6 +223,28 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 
 On a server without the `firebase-service-account.json` file (e.g. Render), set the three variables above directly in the dashboard environment. Do **not** set `FIREBASE_SERVICE_ACCOUNT_PATH` on hosted environments.
 
+### Audition status
+
+Auditions have an overall `OPEN` or `CLOSED` status, separate from an
+applicant's `PENDING`, `SHORTLISTED`, `ACCEPTED`, or `REJECTED` application
+status. New auditions start as `OPEN`. Audition list, detail, posted-audition,
+and application-list responses include the overall status.
+
+The audition creator or an admin can change it with
+`PATCH /auditions/:id/status` and a JSON body such as
+`{ "status": "CLOSED" }`. A closed audition stays visible in existing lists but
+does not accept new applications. Reopen it with `{ "status": "OPEN" }`.
+
+### Help messages
+
+`POST /help` requires a user JWT and accepts
+`{ "message": "Describe the issue here" }` (up to 5,000 characters). The
+backend emails the message and the authenticated user's profile details
+(excluding password and password-reset credentials) from `info@teensss.com` to
+`teenssoftwaresolutionsllp@gmail.com` via Resend. `RESEND_API_KEY` must be
+configured and `teensss.com` must be verified with Resend; success is returned
+only after Resend accepts the email.
+
 ### Live platform statistics
 
 `GET /stats` is a public endpoint that returns current aggregate counts for
@@ -231,9 +253,10 @@ and recorded views. `updatedAt` indicates when the snapshot was generated;
 counts are queried from the database for each request.
 
 Some metrics are not represented in the current data model and are returned as
-`null` rather than estimated: audition live/closed totals, image-versus-video
-post totals, unique reach, and profile views. Craft counts reflect the
-category saved on user profiles; they do not indicate approval status.
+`null` rather than estimated: image-versus-video post totals, unique reach, and
+profile views. Audition `live` counts OPEN auditions and `closed` counts CLOSED
+auditions. Craft counts reflect the category saved on user profiles; they do
+not indicate approval status.
 `totalMediaPosts` counts records in the shared media table, which includes
 photo posts as well as videos.
 
@@ -849,4 +872,4 @@ https://casting-be.vercel.app
 ## License
 
 This project is private and intended for internal platform usage.
-
+

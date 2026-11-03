@@ -12,7 +12,10 @@ export class UserRepository {
   ) {}
 
   async create(user: typeof schema.users.$inferInsert) {
-    const [created] = await this.db.insert(schema.users).values(user).returning();
+    const [created] = await this.db
+      .insert(schema.users)
+      .values(user)
+      .returning();
     return created;
   }
 
@@ -31,6 +34,67 @@ export class UserRepository {
       .select()
       .from(schema.users)
       .where(inArray(schema.users.id, ids));
+  }
+
+  async findHelpDetailsById(id: string) {
+    const results = await this.db
+      .select({
+        id: schema.users.id,
+        fullName: schema.users.fullName,
+        username: schema.users.username,
+        email: schema.users.email,
+        mobile: schema.users.mobile,
+        trkCode: schema.users.trkCode,
+        role: schema.users.role,
+        age: schema.users.age,
+        stageName: schema.users.stageName,
+        dob: schema.users.dob,
+        gender: schema.users.gender,
+        country: schema.users.country,
+        state: schema.users.state,
+        city: schema.users.city,
+        address: schema.users.address,
+        postalCode: schema.users.postalCode,
+        profilePhoto: schema.users.profilePhoto,
+        category: schema.users.category,
+        experience: schema.users.experience,
+        skills: schema.users.skills,
+        languages: schema.users.languages,
+        preferredLanguage: schema.users.preferredLanguage,
+        qualification: schema.users.qualification,
+        institute: schema.users.institute,
+        occupation: schema.users.occupation,
+        availableFor: schema.users.availableFor,
+        union: schema.users.union,
+        relocate: schema.users.relocate,
+        height: schema.users.height,
+        weight: schema.users.weight,
+        bodyType: schema.users.bodyType,
+        skinTone: schema.users.skinTone,
+        hairColor: schema.users.hairColor,
+        eyeColor: schema.users.eyeColor,
+        preferredRole: schema.users.preferredRole,
+        travelAvailability: schema.users.travelAvailability,
+        nightShoots: schema.users.nightShoots,
+        headshot: schema.users.headshot,
+        fullBody: schema.users.fullBody,
+        introVideo: schema.users.introVideo,
+        previousWork: schema.users.previousWork,
+        instagram: schema.users.instagram,
+        youtube: schema.users.youtube,
+        facebookUrl: schema.users.facebookUrl,
+        imdb: schema.users.imdb,
+        website: schema.users.website,
+        resume: schema.users.resume,
+        awards: schema.users.awards,
+        bio: schema.users.bio,
+        createdAt: schema.users.createdAt,
+        updatedAt: schema.users.updatedAt,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, id))
+      .limit(1);
+    return results[0] || null;
   }
 
   async deleteById(id: string): Promise<boolean> {
@@ -99,7 +163,10 @@ export class UserRepository {
     return `${prefix}${nextSeq.toString().padStart(4, '0')}`;
   }
 
-  async update(id: string, updateData: Partial<typeof schema.users.$inferInsert>) {
+  async update(
+    id: string,
+    updateData: Partial<typeof schema.users.$inferInsert>,
+  ) {
     const [updated] = await this.db
       .update(schema.users)
       .set({ ...updateData, updatedAt: new Date() })
@@ -108,10 +175,17 @@ export class UserRepository {
     return updated;
   }
 
-  async setPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date) {
+  async setPasswordResetToken(
+    userId: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ) {
     await this.db
       .update(schema.users)
-      .set({ passwordResetTokenHash: tokenHash, passwordResetExpiresAt: expiresAt })
+      .set({
+        passwordResetTokenHash: tokenHash,
+        passwordResetExpiresAt: expiresAt,
+      })
       .where(eq(schema.users.id, userId));
   }
 
@@ -127,7 +201,10 @@ export class UserRepository {
       );
   }
 
-  async resetPasswordWithToken(tokenHash: string, password: string): Promise<boolean> {
+  async resetPasswordWithToken(
+    tokenHash: string,
+    password: string,
+  ): Promise<boolean> {
     const [updated] = await this.db
       .update(schema.users)
       .set({
@@ -148,10 +225,10 @@ export class UserRepository {
 
   async exploreTalent(queryName?: string, category?: string) {
     let whereClause;
-    
+
     // Always filter for role = 'artist' for exploring talent
     const baseCondition = eq(schema.users.role, 'artist');
-    
+
     if (queryName && category && category !== 'All') {
       whereClause = and(
         baseCondition,
@@ -159,7 +236,10 @@ export class UserRepository {
         eq(schema.users.category, category),
       );
     } else if (queryName) {
-      whereClause = and(baseCondition, ilike(schema.users.fullName, `%${queryName}%`));
+      whereClause = and(
+        baseCondition,
+        ilike(schema.users.fullName, `%${queryName}%`),
+      );
     } else if (category && category !== 'All') {
       whereClause = and(baseCondition, eq(schema.users.category, category));
     } else {
@@ -210,7 +290,9 @@ export class UserRepository {
     return result?.count || 0;
   }
 
-  async getFollowersCountByUserIds(userIds: string[]): Promise<Record<string, number>> {
+  async getFollowersCountByUserIds(
+    userIds: string[],
+  ): Promise<Record<string, number>> {
     if (!userIds.length) return {};
 
     const results = await this.db
@@ -222,10 +304,13 @@ export class UserRepository {
       .where(inArray(schema.follows.followingId, userIds))
       .groupBy(schema.follows.followingId);
 
-    return results.reduce((acc, row) => {
-      acc[row.userId as string] = Number(row.count);
-      return acc;
-    }, {} as Record<string, number>);
+    return results.reduce(
+      (acc, row) => {
+        acc[row.userId] = Number(row.count);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
   }
 
   async getFollowingCount(userId: string): Promise<number> {
@@ -236,7 +321,10 @@ export class UserRepository {
     return result?.count || 0;
   }
 
-  async getFollowStatusMap(currentUserId: string, targetUserIds: string[]): Promise<Record<string, boolean>> {
+  async getFollowStatusMap(
+    currentUserId: string,
+    targetUserIds: string[],
+  ): Promise<Record<string, boolean>> {
     if (!targetUserIds.length) return {};
 
     const rows = await this.db
@@ -251,10 +339,13 @@ export class UserRepository {
         ),
       );
 
-    return rows.reduce((acc, row) => {
-      acc[row.followingId as string] = true;
-      return acc;
-    }, {} as Record<string, boolean>);
+    return rows.reduce(
+      (acc, row) => {
+        acc[row.followingId] = true;
+        return acc;
+      },
+      {} as Record<string, boolean>,
+    );
   }
 
   async getVideosCount(userId: string): Promise<number> {
@@ -265,7 +356,9 @@ export class UserRepository {
     return result?.count || 0;
   }
 
-  async getVideosCountByUserIds(userIds: string[]): Promise<Record<string, number>> {
+  async getVideosCountByUserIds(
+    userIds: string[],
+  ): Promise<Record<string, number>> {
     if (!userIds.length) return {};
 
     const results = await this.db
@@ -277,9 +370,12 @@ export class UserRepository {
       .where(inArray(schema.videos.creatorId, userIds))
       .groupBy(schema.videos.creatorId);
 
-    return results.reduce((acc, row) => {
-      acc[row.creatorId as string] = Number(row.count);
-      return acc;
-    }, {} as Record<string, number>);
+    return results.reduce(
+      (acc, row) => {
+        acc[row.creatorId] = Number(row.count);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
   }
 }

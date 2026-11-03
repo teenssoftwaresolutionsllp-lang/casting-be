@@ -11,12 +11,22 @@ export class ApplicationRepository {
     private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async create(application: typeof schema.applications.$inferInsert) {
-    const [created] = await this.db
-      .insert(schema.applications)
-      .values(application)
-      .returning();
-    return created;
+  async create(
+    application: typeof schema.applications.$inferInsert,
+    notification?: typeof schema.notifications.$inferInsert,
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [created] = await transaction
+        .insert(schema.applications)
+        .values(application)
+        .returning();
+
+      if (created && notification) {
+        await transaction.insert(schema.notifications).values(notification);
+      }
+
+      return created;
+    });
   }
 
   async findById(id: string) {
@@ -33,7 +43,10 @@ export class ApplicationRepository {
         auditionCreatorId: schema.auditions.creatorId,
       })
       .from(schema.applications)
-      .leftJoin(schema.auditions, eq(schema.applications.auditionId, schema.auditions.id))
+      .leftJoin(
+        schema.auditions,
+        eq(schema.applications.auditionId, schema.auditions.id),
+      )
       .where(eq(schema.applications.id, id))
       .limit(1);
     return results[0] || null;
@@ -60,6 +73,7 @@ export class ApplicationRepository {
         auditionId: schema.applications.auditionId,
         auditionTitle: schema.auditions.title,
         role: schema.auditions.role,
+        auditionStatus: schema.auditions.status,
         status: schema.applications.status,
         appliedDate: schema.applications.createdAt,
         deadline: schema.auditions.deadline,
@@ -69,19 +83,37 @@ export class ApplicationRepository {
         applicantCategory: schema.users.category,
       })
       .from(schema.applications)
-      .leftJoin(schema.auditions, eq(schema.applications.auditionId, schema.auditions.id))
-      .leftJoin(schema.users, eq(schema.applications.applicantId, schema.users.id))
+      .leftJoin(
+        schema.auditions,
+        eq(schema.applications.auditionId, schema.auditions.id),
+      )
+      .leftJoin(
+        schema.users,
+        eq(schema.applications.applicantId, schema.users.id),
+      )
       .where(eq(schema.applications.applicantId, applicantId))
       .orderBy(desc(schema.applications.createdAt));
   }
 
-  async updateStatus(id: string, status: string, details: string) {
-    const [updated] = await this.db
-      .update(schema.applications)
-      .set({ status, details })
-      .where(eq(schema.applications.id, id))
-      .returning();
-    return updated;
+  async updateStatus(
+    id: string,
+    status: string,
+    details: string,
+    notification?: typeof schema.notifications.$inferInsert,
+  ) {
+    return this.db.transaction(async (transaction) => {
+      const [updated] = await transaction
+        .update(schema.applications)
+        .set({ status, details })
+        .where(eq(schema.applications.id, id))
+        .returning();
+
+      if (updated && notification) {
+        await transaction.insert(schema.notifications).values(notification);
+      }
+
+      return updated;
+    });
   }
 
   async findByAuditionId(auditionId: string) {
@@ -148,12 +180,17 @@ export class ApplicationRepository {
         },
       })
       .from(schema.applications)
-      .innerJoin(schema.users, eq(schema.applications.applicantId, schema.users.id))
+      .innerJoin(
+        schema.users,
+        eq(schema.applications.applicantId, schema.users.id),
+      )
       .where(eq(schema.applications.auditionId, auditionId))
       .orderBy(desc(schema.applications.createdAt));
   }
 
   async delete(id: string) {
-    await this.db.delete(schema.applications).where(eq(schema.applications.id, id));
+    await this.db
+      .delete(schema.applications)
+      .where(eq(schema.applications.id, id));
   }
 }

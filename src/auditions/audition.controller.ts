@@ -5,17 +5,30 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Patch,
   Body,
   Param,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { AuditionService } from './audition.service';
 import { CreateAuditionDto } from './dto/create-audition.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CINEMA_CRAFTS } from '../common/cinema-crafts';
+import { UpdateAuditionStatusDto } from './dto/update-audition-status.dto';
+
+interface AuthenticatedUser {
+  sub: string;
+  isAdmin?: boolean;
+}
 
 @ApiTags('Auditions')
 @ApiBearerAuth()
@@ -27,7 +40,10 @@ export class AuditionController {
   @Post()
   @ApiOperation({ summary: 'Post a new casting call / audition opportunity' })
   @ApiResponse({ status: 201, description: 'Audition posted successfully.' })
-  async create(@CurrentUser() user: any, @Body() dto: CreateAuditionDto) {
+  async create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateAuditionDto,
+  ) {
     return this.auditionService.createAudition(user.sub, dto);
   }
 
@@ -37,33 +53,85 @@ export class AuditionController {
     name: 'category',
     required: false,
     enum: CINEMA_CRAFTS,
-    description: 'Filter auditions by cinema craft category; omit or use All for every category',
+    description:
+      'Filter auditions by cinema craft category; omit or use All for every category',
   })
   @ApiResponse({ status: 200, description: 'Returns list of auditions.' })
-  async findAll(@CurrentUser() user: any, @Query('category') category?: string) {
+  async findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('category') category?: string,
+  ) {
     return this.auditionService.findAll(user.sub, category);
   }
 
   @Get('my-posted')
-  @ApiOperation({ summary: 'Retrieve auditions created/posted by the current user' })
-  @ApiResponse({ status: 200, description: 'Returns posted auditions list with applicants count.' })
-  async findMyPosted(@CurrentUser() user: any) {
+  @ApiOperation({
+    summary: 'Retrieve auditions created/posted by the current user',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns posted auditions list with applicants count.',
+  })
+  async findMyPosted(@CurrentUser() user: AuthenticatedUser) {
     return this.auditionService.findMyPosted(user.sub);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Retrieve detailed information for a single audition opportunity' })
-  @ApiResponse({ status: 200, description: 'Audition details. Includes applicant lists if called by publisher.' })
-  async findOne(@CurrentUser() user: any, @Param('id') id: string) {
+  @ApiOperation({
+    summary: 'Retrieve detailed information for a single audition opportunity',
+  })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Audition details. Includes applicant lists if called by publisher.',
+  })
+  async findOne(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
     return this.auditionService.findOne(id, user.sub);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({
+    summary: 'Open or close an audition (creator or admin only)',
+  })
+  @ApiResponse({ status: 200, description: 'Audition status updated.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Only the audition creator or an admin can update its status.',
+  })
+  async updateStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateAuditionStatusDto,
+  ) {
+    return this.auditionService.updateStatus(
+      id,
+      user.sub,
+      dto.status,
+      user.isAdmin === true,
+    );
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete an audition created by the current user or an admin' })
+  @ApiOperation({
+    summary: 'Delete an audition created by the current user or an admin',
+  })
   @ApiResponse({ status: 200, description: 'Audition deleted successfully.' })
-  @ApiResponse({ status: 403, description: 'Only the audition creator or an admin can delete it.' })
-  async delete(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.auditionService.deleteAudition(id, user.sub, user.isAdmin === true);
+  @ApiResponse({
+    status: 403,
+    description: 'Only the audition creator or an admin can delete it.',
+  })
+  async delete(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.auditionService.deleteAudition(
+      id,
+      user.sub,
+      user.isAdmin === true,
+    );
   }
 }

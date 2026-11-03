@@ -38,7 +38,10 @@ export class AuditionService {
   }
 
   async findAll(userId: string, category?: string) {
-    const list = await this.auditionRepository.findAllWithUserApplication(userId, category);
+    const list = await this.auditionRepository.findAllWithUserApplication(
+      userId,
+      category,
+    );
 
     return list.map((a) => ({
       id: a.id,
@@ -54,6 +57,7 @@ export class AuditionService {
       deadline: a.deadline,
       lang: a.lang,
       desc: a.desc,
+      status: a.status,
       createdAt: a.createdAt,
       contactName: a.contactName,
       createdByMe: a.creatorId === userId,
@@ -69,7 +73,8 @@ export class AuditionService {
     }
 
     const auditionIds = list.map((a) => a.id);
-    const applicantsMap = await this.auditionRepository.getApplicantsForAuditionIds(auditionIds);
+    const applicantsMap =
+      await this.auditionRepository.getApplicantsForAuditionIds(auditionIds);
 
     return list.map((a) => ({
       ...a,
@@ -85,7 +90,10 @@ export class AuditionService {
     }
 
     const createdByMe = audition.creatorId === userId;
-    const app = await this.applicationRepository.findByAuditionAndApplicant(id, userId);
+    const app = await this.applicationRepository.findByAuditionAndApplicant(
+      id,
+      userId,
+    );
 
     let applicants: any[] = [];
     if (createdByMe) {
@@ -108,14 +116,17 @@ export class AuditionService {
       throw new NotFoundException(`Audition with ID ${id} not found.`);
     }
     if (audition.creatorId !== userId && !isAdmin) {
-      throw new ForbiddenException('Only the audition creator or an admin can delete it.');
+      throw new ForbiddenException(
+        'Only the audition creator or an admin can delete it.',
+      );
     }
 
     // Collect all applicant IDs before deletion (cascade will remove applications)
-    const applicants = await this.auditionRepository.getApplicantsForAudition(id);
+    const applicants =
+      await this.auditionRepository.getApplicantsForAudition(id);
     const applicantIds = applicants
-      .map((a: any) => a.applicantId ?? a.id)
-      .filter((aid: string) => aid !== userId);
+      .map((applicant) => applicant.applicantId)
+      .filter((applicantId) => applicantId !== userId);
 
     const deleted = await this.auditionRepository.deleteById(id);
     if (!deleted) {
@@ -140,5 +151,28 @@ export class AuditionService {
     }
 
     return { deleted: true };
+  }
+
+  async updateStatus(
+    id: string,
+    userId: string,
+    status: 'OPEN' | 'CLOSED',
+    isAdmin = false,
+  ) {
+    const audition = await this.auditionRepository.findById(id);
+    if (!audition) {
+      throw new NotFoundException(`Audition with ID ${id} not found.`);
+    }
+    if (audition.creatorId !== userId && !isAdmin) {
+      throw new ForbiddenException(
+        'Only the audition creator or an admin can update its status.',
+      );
+    }
+
+    const updated = await this.auditionRepository.updateStatus(id, status);
+    if (!updated) {
+      throw new NotFoundException(`Audition with ID ${id} not found.`);
+    }
+    return updated;
   }
 }

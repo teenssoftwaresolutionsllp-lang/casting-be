@@ -51,7 +51,11 @@ export class ApplicationController {
   }
 
   @Patch('applications/:id/status')
-  @ApiOperation({ summary: 'Update status of an application (only for the audition creator)' })
+  @ApiOperation({
+    summary: 'Update status of an application (only for the audition creator)',
+    description:
+      'Status changes to SHORTLISTED, ACCEPTED, or REJECTED notify the applicant.',
+  })
   @ApiResponse({ status: 200, description: 'Status updated.' })
   async updateStatus(
     @CurrentUser() user: any,

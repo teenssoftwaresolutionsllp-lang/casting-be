@@ -12,7 +12,10 @@ export class AuditionRepository {
   ) {}
 
   async create(audition: typeof schema.auditions.$inferInsert) {
-    const [created] = await this.db.insert(schema.auditions).values(audition).returning();
+    const [created] = await this.db
+      .insert(schema.auditions)
+      .values(audition)
+      .returning();
     return created;
   }
 
@@ -40,6 +43,7 @@ export class AuditionRepository {
         deadline: schema.auditions.deadline,
         lang: schema.auditions.lang,
         desc: schema.auditions.desc,
+        status: schema.auditions.status,
         createdAt: schema.auditions.createdAt,
         contactName: schema.users.fullName,
       })
@@ -66,6 +70,7 @@ export class AuditionRepository {
         deadline: schema.auditions.deadline,
         lang: schema.auditions.lang,
         desc: schema.auditions.desc,
+        status: schema.auditions.status,
         createdAt: schema.auditions.createdAt,
         contactName: schema.users.fullName,
       })
@@ -95,6 +100,7 @@ export class AuditionRepository {
         deadline: schema.auditions.deadline,
         lang: schema.auditions.lang,
         desc: schema.auditions.desc,
+        status: schema.auditions.status,
         createdAt: schema.auditions.createdAt,
         contactName: schema.users.fullName,
         applicationId: schema.applications.id,
@@ -133,6 +139,7 @@ export class AuditionRepository {
         deadline: schema.auditions.deadline,
         lang: schema.auditions.lang,
         desc: schema.auditions.desc,
+        status: schema.auditions.status,
         createdAt: schema.auditions.createdAt,
         contactName: schema.users.fullName,
       })
@@ -140,6 +147,15 @@ export class AuditionRepository {
       .leftJoin(schema.users, eq(schema.auditions.creatorId, schema.users.id))
       .where(eq(schema.auditions.creatorId, creatorId))
       .orderBy(desc(schema.auditions.createdAt));
+  }
+
+  async updateStatus(id: string, status: 'OPEN' | 'CLOSED') {
+    const [updated] = await this.db
+      .update(schema.auditions)
+      .set({ status })
+      .where(eq(schema.auditions.id, id))
+      .returning();
+    return updated || null;
   }
 
   async getApplicantsForAudition(auditionId: string) {
@@ -200,12 +216,17 @@ export class AuditionRepository {
         details: schema.applications.details,
       })
       .from(schema.applications)
-      .leftJoin(schema.users, eq(schema.applications.applicantId, schema.users.id))
+      .leftJoin(
+        schema.users,
+        eq(schema.applications.applicantId, schema.users.id),
+      )
       .where(eq(schema.applications.auditionId, auditionId))
       .orderBy(desc(schema.applications.createdAt));
   }
 
-  async getApplicantsForAuditionIds(auditionIds: string[]): Promise<Record<string, any[]>> {
+  async getApplicantsForAuditionIds(
+    auditionIds: string[],
+  ): Promise<Record<string, any[]>> {
     if (!auditionIds.length) return {};
 
     const rows = await this.db
@@ -266,7 +287,10 @@ export class AuditionRepository {
         details: schema.applications.details,
       })
       .from(schema.applications)
-      .leftJoin(schema.users, eq(schema.applications.applicantId, schema.users.id))
+      .leftJoin(
+        schema.users,
+        eq(schema.applications.applicantId, schema.users.id),
+      )
       .where(inArray(schema.applications.auditionId, auditionIds))
       .orderBy(desc(schema.applications.createdAt));
 
@@ -281,4 +305,3 @@ export class AuditionRepository {
     return map;
   }
 }
-
