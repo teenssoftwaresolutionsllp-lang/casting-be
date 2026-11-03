@@ -18,7 +18,10 @@ describe('UserService', () => {
       getVideosCountByUserIds: jest.fn().mockResolvedValue({ 'user-1': 7 }),
     } as any;
 
-    const service = new UserService(repository);
+    const notificationService = {
+      createNotification: jest.fn(),
+    } as any;
+    const service = new UserService(repository, notificationService);
 
     const result = await service.exploreCreators('current-user', 'Actor');
 
