@@ -2,7 +2,7 @@
 
 This repository contains the NestJS API backend for the Talent Casting platform. It handles authentication, profile management, media uploads, stories, auditions, applications, chat, notifications, admin operations, and audit logging.
 
-The project is structured as a modular backend service using NestJS, Drizzle ORM, PostgreSQL, and Cloudinary.
+The project is structured as a modular backend service using NestJS, Drizzle ORM, PostgreSQL, and Amazon S3.
 
 A separate admin frontend app is maintained alongside this backend for the dashboard experience.
 
@@ -11,14 +11,14 @@ A separate admin frontend app is maintained alongside this backend for the dashb
 - Backend API: this repository
 - Admin web app: separate frontend project connected to this API
 - Database: PostgreSQL via Drizzle ORM
-- Media storage: Cloudinary
+- Media storage: Amazon S3
 - Email delivery: Resend
 
 ## Prerequisites
 
 - Node.js 22.x
 - PostgreSQL database
-- Cloudinary account
+- Amazon S3 bucket (with EC2 IAM role casting-s3-access or AWS CLI credentials)
 - Resend API key for password reset emails
 - Firebase project credentials for Google login
 
@@ -32,9 +32,13 @@ NODE_ENV=development
 JWT_SECRET=supersecretjwtkeyforcastingapp2026
 DATABASE_URL=postgresql://user:password@host:5432/db_name
 
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+AWS_REGION=ap-southeast-2
+S3_BUCKET=casting-app-s3
+# S3_KEY_PREFIX=casting/
+# S3_SIGNED_URL_TTL=3600
+# MAX_IMAGE_MB=50
+# MAX_VIDEO_MB=500
+# CLOUDFRONT_DOMAIN=d1234abcdef.cloudfront.net
 
 FIREBASE_PROJECT_ID=casting-29490
 FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@casting-29490.iam.gserviceaccount.com
@@ -729,7 +733,7 @@ Tracked action examples:
 
 ## Media Uploads
 
-The media module uploads files to Cloudinary with file-size limits.
+The media module streams uploads directly to Amazon S3 with file-size limits.
 
 Current upload limits:
 - generic upload: 100 MB

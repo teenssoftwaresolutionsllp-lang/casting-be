@@ -10,7 +10,14 @@ describe('StoriesService', () => {
     markViewed: jest.Mock;
     deleteById: jest.Mock;
   };
-  let mediaService: { uploadFile: jest.Mock };
+  let mediaService: {
+    uploadFile: jest.Mock;
+    deleteFile: jest.Mock;
+    resolveUrl: jest.Mock;
+  };
+  let notificationService: {
+    createNotification: jest.Mock;
+  };
 
   beforeEach(() => {
     repository = {
@@ -20,8 +27,22 @@ describe('StoriesService', () => {
       markViewed: jest.fn(),
       deleteById: jest.fn(),
     };
-    mediaService = { uploadFile: jest.fn().mockResolvedValue('https://cdn.example/story.jpg') };
-    service = new StoriesService(repository as any, mediaService as any);
+    mediaService = {
+      uploadFile: jest.fn().mockResolvedValue({
+        key: 'stories/test.jpg',
+        url: 'https://cdn.example/story.jpg',
+      }),
+      deleteFile: jest.fn().mockResolvedValue(undefined),
+      resolveUrl: jest.fn().mockImplementation(async (u) => u),
+    };
+    notificationService = {
+      createNotification: jest.fn().mockResolvedValue({}),
+    };
+    service = new StoriesService(
+      repository as any,
+      mediaService as any,
+      notificationService as any,
+    );
   });
 
   it('uploads image stories and assigns a 24-hour expiration', async () => {
@@ -35,6 +56,7 @@ describe('StoriesService', () => {
     expect(result.creatorId).toBe('creator-id');
     expect(result.mediaType).toBe('image');
     expect(result.mediaUrl).toBe('https://cdn.example/story.jpg');
+    expect(result.key).toBe('stories/test.jpg');
     expect(result.expiresAt.getTime()).toBeGreaterThanOrEqual(now + 24 * 60 * 60 * 1000);
     expect(result.expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + 24 * 60 * 60 * 1000);
   });
@@ -67,12 +89,13 @@ describe('StoriesService', () => {
   });
 
   it('allows only the story owner to delete a story', async () => {
-    repository.findById.mockResolvedValue({ creatorId: 'other-user' });
+    repository.findById.mockResolvedValue({ creatorId: 'other-user', mediaUrl: 'stories/s1.jpg' });
     await expect(service.delete('story-id', 'viewer-id')).rejects.toBeInstanceOf(ForbiddenException);
     expect(repository.deleteById).not.toHaveBeenCalled();
 
-    repository.findById.mockResolvedValue({ creatorId: 'owner-id' });
+    repository.findById.mockResolvedValue({ creatorId: 'owner-id', mediaUrl: 'stories/s1.jpg' });
     await expect(service.delete('story-id', 'owner-id')).resolves.toEqual({ deleted: true });
+    expect(mediaService.deleteFile).toHaveBeenCalledWith('stories/s1.jpg');
     expect(repository.deleteById).toHaveBeenCalledWith('story-id');
   });
 });

@@ -9,13 +9,20 @@ export class MediaService {
 
   /**
    * Upload a file to S3 and return { key, url }.
-   * For video files the buffer is streamed via @aws-sdk/lib-storage so the
-   * server never holds the full payload in memory.
+   * If the file was streamed via S3StorageEngine, its { key, url } are already
+   * present and returned immediately without duplicating work or buffering.
    */
   async uploadFile(
     file: Express.Multer.File,
     folder = 'general',
   ): Promise<UploadResult> {
+    if ((file as any)?.key && (file as any)?.url) {
+      return {
+        key: (file as any).key,
+        url: (file as any).url,
+      };
+    }
+
     try {
       const result = await this.s3.upload(file, folder);
       this.logger.log(`Upload successful: ${result.key}`);

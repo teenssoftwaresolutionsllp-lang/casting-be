@@ -288,8 +288,8 @@ export const videos = pgTable('videos', {
   category: text('category').notNull(), // 'Films' | 'Ads' | 'TV' | 'Music Videos'
   title: text('title').notNull(),
   desc: text('desc').notNull(),
-  url: text('url').notNull(), // Cloudinary URL
-  thumb: text('thumb').notNull(), // Thumbnail URL
+  url: text('url').notNull(), // S3 object key or legacy media URL
+  thumb: text('thumb').notNull(), // S3 object key or legacy thumbnail URL
   viewsCount: integer('views_count').default(0).notNull(),
   likesCount: integer('likes_count').default(0).notNull(),
   createdAt: timestampWithTimezone('created_at').defaultNow().notNull(),

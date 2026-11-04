@@ -14,13 +14,18 @@ export class StoriesService {
   ) {}
 
   async create(creatorId: string, file: Express.Multer.File) {
-    const { key } = await this.mediaService.uploadFile(file, 'stories');
-    return this.storiesRepository.create({
+    const { key, url } = await this.mediaService.uploadFile(file, 'stories');
+    const created = await this.storiesRepository.create({
       creatorId,
       mediaUrl: key, // Store S3 key instead of full URL
       mediaType: file.mimetype.startsWith('video/') ? 'video' : 'image',
       expiresAt: new Date(Date.now() + STORY_LIFETIME_MS),
     });
+    return {
+      ...created,
+      mediaUrl: url,
+      key,
+    };
   }
 
   async getFeed(viewerId: string, requestedLimit = 20, requestedOffset = 0) {

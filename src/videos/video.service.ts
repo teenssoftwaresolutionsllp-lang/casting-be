@@ -16,7 +16,7 @@ export class VideoService {
   ) {}
 
   async createVideo(creatorId: string, dto: CreateVideoDto) {
-    return this.videoRepository.create({
+    const created = await this.videoRepository.create({
       creatorId,
       category: dto.category,
       title: dto.title,
@@ -24,6 +24,10 @@ export class VideoService {
       url: dto.url,
       thumb: dto.thumb,
     });
+    return {
+      ...created,
+      key: created.url,
+    };
   }
 
   async findAll(userId: string, category?: string) {
@@ -41,6 +45,7 @@ export class VideoService {
         desc: v.desc,
         url: (await this.s3.resolveUrl(v.url)) ?? v.url,
         thumb: (await this.s3.resolveUrl(v.thumb)) ?? v.thumb,
+        key: v.url,
         likesCount: v.likesCount,
         viewsCount: v.viewsCount,
         liked: !!v.likedUserId,
@@ -66,6 +71,7 @@ export class VideoService {
       desc: v.desc,
       url: (await this.s3.resolveUrl(v.url)) ?? v.url,
       thumb: (await this.s3.resolveUrl(v.thumb)) ?? v.thumb,
+      key: v.url,
       likesCount: v.likesCount,
       viewsCount: v.viewsCount,
       liked,

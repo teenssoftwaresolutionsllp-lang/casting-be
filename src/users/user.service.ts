@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { UserRepository } from './user.repository';
 import { NotificationService } from '../notifications/notification.service';
+import { S3Service } from '../storage/s3.service.js';
 
 @Injectable()
 export class UserService {
@@ -20,14 +21,27 @@ export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly notificationService: NotificationService,
+    @Optional() private readonly s3?: S3Service,
   ) {}
+
+  private async resolveUserMedia(user: any) {
+    if (!user || !this.s3) return user;
+    return {
+      ...user,
+      profilePhoto: (await this.s3.resolveUrl(user.profilePhoto)) || this.defaultProfilePic,
+      headshot: await this.s3.resolveUrl(user.headshot),
+      fullBody: await this.s3.resolveUrl(user.fullBody),
+      introVideo: await this.s3.resolveUrl(user.introVideo),
+      resume: await this.s3.resolveUrl(user.resume),
+    };
+  }
 
   async findById(id: string) {
     const user = await this.userRepository.findById(id);
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-    return user;
+    return this.resolveUserMedia(user);
   }
 
   async findByEmail(email: string) {
@@ -72,19 +86,21 @@ export class UserService {
       this.userRepository.isFollowing(currentUserId, targetUserId),
     ]);
 
+    const userMedia = await this.resolveUserMedia(user);
+
     return {
       id: user.id,
       name: user.fullName,
       stageName: user.stageName,
       category: user.category,
       bio: user.bio,
-      pic: user.profilePhoto || this.defaultProfilePic,
+      pic: userMedia?.profilePhoto || this.defaultProfilePic,
       followers: this.formatCount(followers),
       followingCount: this.formatCount(following),
       videosCount,
       following: isFollowing,
       role: user.role,
-      details: user,
+      details: userMedia,
     };
   }
 
@@ -103,25 +119,27 @@ export class UserService {
       this.userRepository.getVideosCountByUserIds(creatorIds),
     ]);
 
-    return creators.map((creator) => {
-      const followers = followersMap[creator.id] ?? 0;
-      const following = !!followingMap[creator.id];
-      const videosCount = videosMap[creator.id] ?? 0;
+    return Promise.all(
+      creators.map(async (creator) => {
+        const followers = followersMap[creator.id] ?? 0;
+        const following = !!followingMap[creator.id];
+        const videosCount = videosMap[creator.id] ?? 0;
 
-      return {
-        id: creator.id,
-        name: creator.fullName,
-        category: creator.category || 'Actor',
-        bio: creator.bio || 'Talent Casting artist.',
-        pic: creator.profilePhoto || this.defaultProfilePic,
-        followers: this.formatCount(followers),
-        videosCount,
-        handle: creator.stageName
-          ? `@${creator.stageName.toLowerCase().replace(/\s+/g, '')}`
-          : `@user${creator.id.substring(0, 5)}`,
-        following,
-      };
-    });
+        return {
+          id: creator.id,
+          name: creator.fullName,
+          category: creator.category || 'Actor',
+          bio: creator.bio || 'Talent Casting artist.',
+          pic: (await this.s3?.resolveUrl(creator.profilePhoto)) || this.defaultProfilePic,
+          followers: this.formatCount(followers),
+          videosCount,
+          handle: creator.stageName
+            ? `@${creator.stageName.toLowerCase().replace(/\s+/g, '')}`
+            : `@user${creator.id.substring(0, 5)}`,
+          following,
+        };
+      }),
+    );
   }
 
   async toggleFollow(followerId: string, followingId: string) {

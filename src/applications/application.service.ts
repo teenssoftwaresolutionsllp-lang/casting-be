@@ -5,10 +5,12 @@ import {
   ForbiddenException,
   Inject,
   forwardRef,
+  Optional,
 } from '@nestjs/common';
 import { ApplicationRepository } from './application.repository';
 import { AuditionRepository } from '../auditions/audition.repository';
 import { NotificationService } from '../notifications/notification.service';
+import { S3Service } from '../storage/s3.service.js';
 import { ApplyDto } from './dto/apply.dto';
 import { UpdateApplicationStatusDto } from './dto/update-status.dto';
 
@@ -19,6 +21,7 @@ export class ApplicationService {
     @Inject(forwardRef(() => AuditionRepository))
     private readonly auditionRepository: AuditionRepository,
     private readonly notificationService: NotificationService,
+    @Optional() private readonly s3?: S3Service,
   ) {}
 
   async apply(auditionId: string, applicantId: string, dto: ApplyDto) {
@@ -193,14 +196,32 @@ export class ApplicationService {
     const applicants =
       await this.applicationRepository.findByAuditionId(auditionId);
 
+    const resolvedApplicants = this.s3
+      ? await Promise.all(
+          applicants.map(async (app) => ({
+            ...app,
+            applicant: app.applicant
+              ? {
+                  ...app.applicant,
+                  profilePhoto: (await this.s3!.resolveUrl(app.applicant.profilePhoto)) ?? app.applicant.profilePhoto,
+                  headshot: (await this.s3!.resolveUrl(app.applicant.headshot)) ?? app.applicant.headshot,
+                  fullBody: (await this.s3!.resolveUrl(app.applicant.fullBody)) ?? app.applicant.fullBody,
+                  introVideo: (await this.s3!.resolveUrl(app.applicant.introVideo)) ?? app.applicant.introVideo,
+                  resume: (await this.s3!.resolveUrl(app.applicant.resume)) ?? app.applicant.resume,
+                }
+              : app.applicant,
+          })),
+        )
+      : applicants;
+
     return {
       auditionId: audition.id,
       auditionTitle: audition.title,
       auditionCategory: audition.category,
       auditionRole: audition.role,
       auditionStatus: audition.status,
-      totalApplicants: applicants.length,
-      applicants,
+      totalApplicants: resolvedApplicants.length,
+      applicants: resolvedApplicants,
     };
   }
 }

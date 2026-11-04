@@ -17,12 +17,12 @@ export class CreateVideoDto {
   @IsNotEmpty()
   desc: string;
 
-  @ApiProperty({ example: 'https://res.cloudinary.com/demo/video/upload/sample.mp4', description: 'Video file URL' })
+  @ApiProperty({ example: 'videos/c7a1c720-3b98-46cb-8b5e-2b10935d2105.mp4', description: 'Video S3 object key or URL' })
   @IsString()
   @IsNotEmpty()
   url: string;
 
-  @ApiProperty({ example: 'https://res.cloudinary.com/demo/image/upload/sample.jpg', description: 'Video thumbnail URL' })
+  @ApiProperty({ example: 'photos/4cfc166d-1bf9-4089-982c-7b838706d871.jpg', description: 'Video thumbnail S3 object key or URL' })
   @IsString()
   @IsNotEmpty()
   thumb: string;

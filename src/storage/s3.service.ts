@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -10,6 +10,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Readable } from 'stream';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
+import type { StorageEngine } from 'multer';
 
 export interface UploadResult {
   key: string;
@@ -18,6 +19,7 @@ export interface UploadResult {
 
 @Injectable()
 export class S3Service implements OnModuleInit {
+  private static instance: S3Service;
   private readonly logger = new Logger(S3Service.name);
   private readonly client: S3Client;
   private readonly bucket: string;
@@ -25,10 +27,15 @@ export class S3Service implements OnModuleInit {
   private readonly signedUrlTtl: number;
   private readonly cloudfrontDomain: string | undefined;
 
+  public static getInstance(): S3Service {
+    return S3Service.instance;
+  }
+
   constructor(private readonly config: ConfigService) {
     const region = this.config.get<string>('AWS_REGION', 'ap-southeast-2');
     this.bucket = this.config.get<string>('S3_BUCKET', 'casting-app-s3');
-    this.keyPrefix = this.config.get<string>('S3_KEY_PREFIX', '');
+    const rawPrefix = (this.config.get<string>('S3_KEY_PREFIX') || '').trim();
+    this.keyPrefix = rawPrefix && !rawPrefix.endsWith('/') ? `${rawPrefix}/` : rawPrefix;
     this.signedUrlTtl = Number(
       this.config.get<string>('S3_SIGNED_URL_TTL', '3600'),
     );
@@ -36,9 +43,11 @@ export class S3Service implements OnModuleInit {
 
     // Uses the default credential chain (instance role on EC2, env vars locally)
     this.client = new S3Client({ region });
+    S3Service.instance = this;
   }
 
   onModuleInit() {
+    S3Service.instance = this;
     this.logger.log(
       `S3Service ready – bucket=${this.bucket}, prefix="${this.keyPrefix}", ` +
         `ttl=${this.signedUrlTtl}s, cloudfront=${this.cloudfrontDomain ?? 'off'}`,
@@ -50,24 +59,38 @@ export class S3Service implements OnModuleInit {
   // ──────────────────────────────────────────────────────────────────────────
 
   async upload(
-    fileOrStream: Express.Multer.File | Readable,
+    fileOrStream: Express.Multer.File | Readable | Buffer,
     folder: string,
     mimeType?: string,
     originalName?: string,
   ): Promise<UploadResult> {
-    const isMulterFile = !('pipe' in fileOrStream && typeof (fileOrStream as any).pipe === 'function' && !('buffer' in fileOrStream));
-    const multerFile = isMulterFile ? (fileOrStream as Express.Multer.File) : undefined;
+    let body: Readable;
+    let contentType = mimeType || 'application/octet-stream';
+    let filename = originalName || '';
 
-    const body: Readable | Buffer = multerFile
-      ? (multerFile.buffer
-          ? Readable.from(multerFile.buffer)
-          : (multerFile as any).stream ?? Readable.from(multerFile.buffer))
-      : (fileOrStream as Readable);
+    if (Buffer.isBuffer(fileOrStream)) {
+      body = Readable.from(fileOrStream);
+    } else if (fileOrStream && typeof (fileOrStream as any).pipe === 'function') {
+      body = fileOrStream as Readable;
+    } else if (fileOrStream && typeof fileOrStream === 'object') {
+      const mFile = fileOrStream as Express.Multer.File;
+      if (mFile.buffer && Buffer.isBuffer(mFile.buffer)) {
+        body = Readable.from(mFile.buffer);
+      } else if (mFile.stream && typeof (mFile.stream as any).pipe === 'function') {
+        body = mFile.stream;
+      } else if ((mFile as any).path) {
+        const fs = await import('fs');
+        body = fs.createReadStream((mFile as any).path);
+      } else {
+        throw new BadRequestException('Invalid file upload payload');
+      }
+      contentType = mimeType || mFile.mimetype || contentType;
+      filename = originalName || mFile.originalname || filename;
+    } else {
+      throw new BadRequestException('No file provided for upload');
+    }
 
-    const contentType =
-      mimeType ?? multerFile?.mimetype ?? 'application/octet-stream';
-    const ext =
-      extname(originalName ?? multerFile?.originalname ?? '') || this.extFromMime(contentType);
+    const ext = extname(filename) || this.extFromMime(contentType);
     const key = `${this.keyPrefix}${folder}/${randomUUID()}${ext}`;
 
     const upload = new Upload({
@@ -155,4 +178,53 @@ export class S3Service implements OnModuleInit {
     };
     return map[mime] ?? '';
   }
+}
+
+/**
+ * Custom Multer StorageEngine that streams incoming files directly to S3 via S3Service.
+ * This ensures large video files (up to 500 MiB) are streamed in 5 MiB chunks without
+ * buffering into RAM on a 1 GiB memory machine.
+ */
+export class S3StorageEngine implements StorageEngine {
+  constructor(private readonly folder: string) {}
+
+  _handleFile(
+    _req: any,
+    file: Express.Multer.File,
+    cb: (error?: any, info?: Partial<Express.Multer.File>) => void,
+  ): void {
+    const s3 = S3Service.getInstance();
+    if (!s3) {
+      return cb(new Error('S3Service has not been initialized yet'));
+    }
+
+    s3.upload(file.stream, this.folder, file.mimetype, file.originalname)
+      .then((result) => {
+        (file as any).key = result.key;
+        (file as any).url = result.url;
+        cb(null, {
+          path: result.url,
+          size: (file as any).size,
+        });
+      })
+      .catch((err) => cb(err));
+  }
+
+  _removeFile(
+    _req: any,
+    file: Express.Multer.File,
+    cb: (error: Error | null) => void,
+  ): void {
+    const key = (file as any)?.key;
+    const s3 = S3Service.getInstance();
+    if (s3 && key && s3.isS3Key(key)) {
+      s3.delete(key).then(() => cb(null)).catch(cb);
+    } else {
+      cb(null);
+    }
+  }
+}
+
+export function createS3Storage(folder = 'general'): StorageEngine {
+  return new S3StorageEngine(folder);
 }

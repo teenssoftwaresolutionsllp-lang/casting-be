@@ -2,6 +2,7 @@
 
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AuthController } from './auth.controller';
@@ -149,7 +150,10 @@ describe('AuthController', () => {
       beforeAll(async () => {
         const moduleFixture: TestingModule = await Test.createTestingModule({
           controllers: [AuthController],
-          providers: [{ provide: AuthService, useValue: authService }],
+          providers: [
+            { provide: AuthService, useValue: authService },
+            { provide: JwtService, useValue: {} },
+          ],
         }).compile();
 
         app = moduleFixture.createNestApplication();

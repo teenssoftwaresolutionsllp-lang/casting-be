@@ -17,6 +17,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { createS3Storage } from '../storage/s3.service.js';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -45,7 +46,12 @@ export class StoriesController {
   constructor(private readonly storiesService: StoriesService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 100 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: createS3Storage('stories'),
+      limits: { fileSize: 100 * 1024 * 1024 },
+    }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload an image or video story that expires after 24 hours' })
   @ApiBody({

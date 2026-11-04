@@ -18,6 +18,7 @@ describe('AuthService - Google Login', () => {
       findByEmail: jest.fn(),
       findByMobile: jest.fn(),
       create: jest.fn(),
+      generateTrkCode: jest.fn().mockResolvedValue('TRK-001'),
     };
     mockJwtService = {
       signAsync: jest.fn().mockResolvedValue('mock-backend-jwt-token'),

@@ -109,8 +109,8 @@ export class RegisterDto {
   city?: string;
 
   @ApiPropertyOptional({
-    example: 'https://cloudinary.com/avatar.jpg',
-    description: 'Profile image URL',
+    example: 'general/avatar.jpg',
+    description: 'Profile image S3 key or URL',
   })
   @IsString()
   @IsOptional()
@@ -273,24 +273,24 @@ export class RegisterDto {
 
   // Portfolio & Media
   @ApiPropertyOptional({
-    example: 'https://cloudinary.com/headshot.jpg',
-    description: 'Headshot portfolio image URL',
+    example: 'photos/headshot.jpg',
+    description: 'Headshot portfolio image S3 key or URL',
   })
   @IsString()
   @IsOptional()
   headshot?: string;
 
   @ApiPropertyOptional({
-    example: 'https://cloudinary.com/fullbody.jpg',
-    description: 'Full body portfolio image URL',
+    example: 'photos/fullbody.jpg',
+    description: 'Full body portfolio image S3 key or URL',
   })
   @IsString()
   @IsOptional()
   fullBody?: string;
 
   @ApiPropertyOptional({
-    example: 'https://cloudinary.com/intro.mp4',
-    description: 'Self-taped intro video link',
+    example: 'videos/intro.mp4',
+    description: 'Self-taped intro video S3 key or URL',
   })
   @IsString()
   @IsOptional()
@@ -338,8 +338,8 @@ export class RegisterDto {
   website?: string;
 
   @ApiPropertyOptional({
-    example: 'https://cloudinary.com/resume.pdf',
-    description: 'Resume PDF upload URL',
+    example: 'general/resume.pdf',
+    description: 'Resume PDF S3 key or URL',
   })
   @IsString()
   @IsOptional()

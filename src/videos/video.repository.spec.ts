@@ -15,34 +15,21 @@ describe('VideoRepository notifications', () => {
       where: jest.fn().mockResolvedValue(undefined),
     };
     const transaction = {
-      insert: jest
-        .fn()
-        .mockReturnValueOnce(likeInsert)
-        .mockReturnValueOnce(notificationInsert),
+      insert: jest.fn().mockReturnValue(likeInsert),
       update: jest.fn().mockReturnValue(update),
     };
     const db = {
       transaction: jest.fn(async (callback) => callback(transaction)),
     };
     const repository = new VideoRepository(db as any);
-    const notification = {
-      userId: 'owner-id',
-      actorId: 'actor-id',
-      type: 'POST_LIKED',
-      title: 'New like',
-      text: 'Someone liked your post.',
-      entityType: 'VIDEO',
-      entityId: 'post-id',
-    };
 
     await expect(
-      repository.addLike('post-id', 'actor-id', notification),
+      repository.addLike('post-id', 'actor-id'),
     ).resolves.toBe(true);
 
     expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(likeInsert.onConflictDoNothing).toHaveBeenCalledTimes(1);
-    expect(transaction.insert).toHaveBeenCalledTimes(2);
-    expect(notificationInsert.values).toHaveBeenCalledWith(notification);
+    expect(transaction.insert).toHaveBeenCalledTimes(1);
     expect(transaction.update).toHaveBeenCalledTimes(1);
   });
 

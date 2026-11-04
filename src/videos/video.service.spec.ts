@@ -11,6 +11,16 @@ describe('VideoService', () => {
     removeLike: jest.Mock;
     createComment: jest.Mock;
   };
+  let notificationService: {
+    createNotification: jest.Mock;
+  };
+  let s3: {
+    upload: jest.Mock;
+    delete: jest.Mock;
+    getUrl: jest.Mock;
+    resolveUrl: jest.Mock;
+    isS3Key: jest.Mock;
+  };
 
   beforeEach(() => {
     repository = {
@@ -21,15 +31,26 @@ describe('VideoService', () => {
       removeLike: jest.fn(),
       createComment: jest.fn(),
     };
-    service = new VideoService(repository as any);
+    notificationService = {
+      createNotification: jest.fn().mockResolvedValue({}),
+    };
+    s3 = {
+      upload: jest.fn(),
+      delete: jest.fn().mockResolvedValue(undefined),
+      getUrl: jest.fn().mockImplementation(async (k) => `https://s3.example.com/${k}`),
+      resolveUrl: jest.fn().mockImplementation(async (k) => (k ? `https://s3.example.com/${k}` : null)),
+      isS3Key: jest.fn().mockImplementation((k) => Boolean(k && !k.startsWith('http'))),
+    };
+    service = new VideoService(repository as any, notificationService as any, s3 as any);
   });
 
   it('allows the post creator to delete a video or photo post', async () => {
-    repository.findById.mockResolvedValue({ creatorId: 'owner-id' });
+    repository.findById.mockResolvedValue({ creatorId: 'owner-id', url: 'videos/v1.mp4', thumb: 'videos/v1.mp4' });
     repository.deleteByIdAndCreator.mockResolvedValue(true);
 
     await expect(service.deleteVideo('post-id', 'owner-id')).resolves.toEqual({ deleted: true });
     expect(repository.deleteByIdAndCreator).toHaveBeenCalledWith('post-id', 'owner-id');
+    expect(s3.delete).toHaveBeenCalledWith('videos/v1.mp4');
   });
 
   it('prevents anyone other than the creator from deleting a post', async () => {
@@ -62,15 +83,18 @@ describe('VideoService', () => {
       liked: true,
       likesCount: 5,
     });
-    expect(repository.addLike).toHaveBeenCalledWith('post-id', 'actor-id', {
-      userId: 'owner-id',
-      actorId: 'actor-id',
-      type: 'POST_LIKED',
-      title: 'New like',
-      text: 'Someone liked your post.',
-      entityType: 'VIDEO',
-      entityId: 'post-id',
-    });
+    expect(repository.addLike).toHaveBeenCalledWith('post-id', 'actor-id');
+    expect(notificationService.createNotification).toHaveBeenCalledWith(
+      'owner-id',
+      'New like',
+      'Someone liked your post.',
+      {
+        actorId: 'actor-id',
+        type: 'POST_LIKED',
+        entityType: 'VIDEO',
+        entityId: 'post-id',
+      },
+    );
   });
 
   it('does not notify for an unlike', async () => {
@@ -91,14 +115,18 @@ describe('VideoService', () => {
 
     await service.postComment('post-id', 'actor-id', { text: 'Nice work' });
 
-    expect(repository.createComment).toHaveBeenCalledWith(
-      { videoId: 'post-id', userId: 'actor-id', text: 'Nice work' },
+    expect(repository.createComment).toHaveBeenCalledWith({
+      videoId: 'post-id',
+      userId: 'actor-id',
+      text: 'Nice work',
+    });
+    expect(notificationService.createNotification).toHaveBeenCalledWith(
+      'owner-id',
+      'New comment',
+      'Someone commented on your post.',
       {
-        userId: 'owner-id',
         actorId: 'actor-id',
         type: 'POST_COMMENTED',
-        title: 'New comment',
-        text: 'Someone commented on your post.',
         entityType: 'VIDEO',
         entityId: 'post-id',
       },
@@ -117,10 +145,7 @@ describe('VideoService', () => {
       liked: true,
       likesCount: 4,
     });
-    expect(repository.addLike).toHaveBeenCalledWith(
-      'post-id',
-      'actor-id',
-      expect.objectContaining({ type: 'POST_LIKED' }),
-    );
+    expect(repository.addLike).toHaveBeenCalledWith('post-id', 'actor-id');
+    expect(notificationService.createNotification).not.toHaveBeenCalled();
   });
 });
