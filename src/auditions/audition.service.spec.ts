@@ -18,7 +18,7 @@ describe('AuditionService status', () => {
         Promise.resolve({ id, status }),
       ),
     };
-    service = new AuditionService(auditionRepository as any, {} as any);
+    service = new AuditionService(auditionRepository as any, {} as any, {} as any);
   });
 
   it('allows the audition creator to update its status', async () => {

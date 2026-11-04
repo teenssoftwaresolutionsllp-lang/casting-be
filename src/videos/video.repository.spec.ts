@@ -48,13 +48,7 @@ describe('VideoRepository notifications', () => {
     } as any);
 
     await expect(
-      repository.addLike('post-id', 'actor-id', {
-        userId: 'owner-id',
-        actorId: 'actor-id',
-        type: 'POST_LIKED',
-        title: 'New like',
-        text: 'Someone liked your post.',
-      }),
+      repository.addLike('post-id', 'actor-id'),
     ).resolves.toBe(false);
 
     expect(transaction.insert).toHaveBeenCalledTimes(1);
@@ -80,13 +74,7 @@ describe('VideoRepository notifications', () => {
     } as any);
 
     await expect(
-      repository.addLike('post-id', 'owner-id', {
-        userId: 'owner-id',
-        actorId: 'owner-id',
-        type: 'POST_LIKED',
-        title: 'New like',
-        text: 'Someone liked your post.',
-      }),
+      repository.addLike('post-id', 'owner-id'),
     ).resolves.toBe(true);
 
     expect(transaction.insert).toHaveBeenCalledTimes(1);
