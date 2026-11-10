@@ -75,7 +75,11 @@ export class VideoRepository {
     return query.orderBy(desc(schema.videos.createdAt));
   }
 
-  async findAllWithUserLike(userId: string, category?: string) {
+  async findAllWithUserLike(
+    userId: string,
+    category?: string,
+    pagination?: { limit: number; offset: number },
+  ) {
     const query = this.db
       .select({
         id: schema.videos.id,
@@ -107,7 +111,11 @@ export class VideoRepository {
       query.where(eq(schema.videos.category, category));
     }
 
-    return query.orderBy(desc(schema.videos.createdAt));
+    const orderedQuery = query.orderBy(desc(schema.videos.createdAt));
+    if (pagination) {
+      orderedQuery.limit(pagination.limit).offset(pagination.offset);
+    }
+    return orderedQuery;
   }
 
   async incrementViews(id: string) {

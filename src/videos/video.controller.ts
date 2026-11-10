@@ -4,6 +4,7 @@ import {
   Post,
   Delete,
   Body,
+  BadRequestException,
   Param,
   ParseUUIDPipe,
   Query,
@@ -35,9 +36,27 @@ export class VideoController {
   @Get()
   @ApiOperation({ summary: 'Retrieve video feeds' })
   @ApiQuery({ name: 'category', required: false, description: 'Filter videos by category' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of videos to return (default 4, maximum 100)' })
+  @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Number of videos to skip (default 0)' })
   @ApiResponse({ status: 200, description: 'Returns video list annotated with liked state.' })
-  async findAll(@CurrentUser() user: any, @Query('category') category?: string) {
-    return this.videoService.findAll(user.sub, category);
+  async findAll(
+    @CurrentUser() user: any,
+    @Query('category') category?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.videoService.findAll(user.sub, category, {
+      limit: limit === undefined ? 4 : this.parsePaginationValue('limit', limit),
+      offset: offset === undefined ? 0 : this.parsePaginationValue('offset', offset),
+    });
+  }
+
+  private parsePaginationValue(name: string, value: string): number {
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed)) {
+      throw new BadRequestException(`${name} must be a whole number`);
+    }
+    return parsed;
   }
 
   @Get(':id')

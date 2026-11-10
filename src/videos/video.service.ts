@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { VideoRepository } from './video.repository.js';
 import { NotificationService } from '../notifications/notification.service.js';
 import { CreateVideoDto } from './dto/create-video.dto.js';
@@ -30,8 +30,27 @@ export class VideoService {
     };
   }
 
-  async findAll(userId: string, category?: string) {
-    const list = await this.videoRepository.findAllWithUserLike(userId, category);
+  async findAll(
+    userId: string,
+    category?: string,
+    pagination?: { limit: number; offset: number },
+  ) {
+    if (
+      pagination &&
+      (pagination.limit < 1 ||
+        pagination.offset < 0 ||
+        pagination.limit > 100)
+    ) {
+      throw new BadRequestException(
+        'limit must be between 1 and 100 and offset must be zero or greater',
+      );
+    }
+
+    const list = await this.videoRepository.findAllWithUserLike(
+      userId,
+      category,
+      pagination,
+    );
 
     return Promise.all(
       list.map(async (v) => ({

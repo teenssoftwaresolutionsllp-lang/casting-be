@@ -4,6 +4,7 @@ import { VideoService } from './video.service';
 describe('VideoService', () => {
   let service: VideoService;
   let repository: {
+    findAllWithUserLike: jest.Mock;
     findById: jest.Mock;
     deleteByIdAndCreator: jest.Mock;
     hasLiked: jest.Mock;
@@ -24,6 +25,7 @@ describe('VideoService', () => {
 
   beforeEach(() => {
     repository = {
+      findAllWithUserLike: jest.fn().mockResolvedValue([]),
       findById: jest.fn(),
       deleteByIdAndCreator: jest.fn(),
       hasLiked: jest.fn(),
@@ -42,6 +44,30 @@ describe('VideoService', () => {
       isS3Key: jest.fn().mockImplementation((k) => Boolean(k && !k.startsWith('http'))),
     };
     service = new VideoService(repository as any, notificationService as any, s3 as any);
+  });
+
+  it('paginates the video feed using the requested limit and offset', async () => {
+    await expect(
+      service.findAll('viewer-id', undefined, { limit: 4, offset: 8 }),
+    ).resolves.toEqual([]);
+
+    expect(repository.findAllWithUserLike).toHaveBeenCalledWith(
+      'viewer-id',
+      undefined,
+      { limit: 4, offset: 8 },
+    );
+  });
+
+  it('rejects invalid video feed pagination values', async () => {
+    await expect(
+      service.findAll('viewer-id', undefined, { limit: 0, offset: 0 }),
+    ).rejects.toThrow('limit must be between 1 and 100');
+    await expect(
+      service.findAll('viewer-id', undefined, { limit: 4, offset: -1 }),
+    ).rejects.toThrow('limit must be between 1 and 100');
+    await expect(
+      service.findAll('viewer-id', undefined, { limit: 101, offset: 0 }),
+    ).rejects.toThrow('limit must be between 1 and 100');
   });
 
   it('allows the post creator to delete a video or photo post', async () => {

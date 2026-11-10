@@ -23,7 +23,7 @@ describe('AuditionService status', () => {
 
   it('allows the audition creator to update its status', async () => {
     await expect(
-      service.updateStatus('audition-id', 'creator-id', 'CLOSED'),
+            service.updateStatus('audition-id', 'creator-id', 'CLOSED'),
     ).resolves.toEqual({ id: 'audition-id', status: 'CLOSED' });
 
     expect(auditionRepository.updateStatus).toHaveBeenCalledWith(

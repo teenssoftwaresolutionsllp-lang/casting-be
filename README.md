@@ -746,6 +746,19 @@ Video endpoint:
 POST /videos/upload
 ```
 
+The video feed is paginated with a default page size of 4 (maximum 100).
+Request subsequent pages by increasing `offset` by `limit`; the endpoint
+continues to return a list, and a response shorter than `limit` means there
+are no more results:
+
+```text
+GET /videos?limit=4&offset=0
+GET /videos?limit=4&offset=4
+```
+
+Clients can implement infinite scroll by appending each page and requesting
+the next offset when the user approaches the end of the current list.
+
 Video and photo posts can be deleted by their creator:
 
 ```text
@@ -876,4 +889,3 @@ https://casting-be.vercel.app
 ## License
 
 This project is private and intended for internal platform usage.
-
