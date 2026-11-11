@@ -55,6 +55,18 @@ describe('VideoService', () => {
       'viewer-id',
       undefined,
       { limit: 4, offset: 8 },
+      true,
+    );
+  });
+
+  it('keeps photo posts available to the dedicated photos feed', async () => {
+    await service.findAll('viewer-id', 'Photos', undefined, false);
+
+    expect(repository.findAllWithUserLike).toHaveBeenCalledWith(
+      'viewer-id',
+      'Photos',
+      undefined,
+      false,
     );
   });
 

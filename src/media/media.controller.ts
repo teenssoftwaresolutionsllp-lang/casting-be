@@ -124,7 +124,7 @@ export class PhotosController {
   @ApiOperation({ summary: 'Get all photos' })
   async getPhotos(@CurrentUser() user: any) {
     // Photos are stored in the videos table with category = 'Photos'
-    return this.videoService.findAll(user.sub, 'Photos');
+    return this.videoService.findAll(user.sub, 'Photos', undefined, false);
   }
 
   @Delete(':id')

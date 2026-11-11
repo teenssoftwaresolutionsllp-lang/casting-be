@@ -1,0 +1,113 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches:
+      - deployment-setup
+  push:
+    branches:
+      - deployment-setup
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: casting-be-deployment
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: Test and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --runInBand
+
+      - name: Build application
+        run: npm run build
+
+  deploy:
+    name: Deploy to EC2
+    needs: ci
+    if: github.ref == 'refs/heads/deployment-setup' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Configure SSH
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          set -eu
+          test -n "$EC2_HOST" || { echo "EC2_HOST secret is required"; exit 1; }
+          test -n "$EC2_USER" || { echo "EC2_USER secret is required"; exit 1; }
+          test -n "$EC2_SSH_PRIVATE_KEY" || { echo "EC2_SSH_PRIVATE_KEY secret is required"; exit 1; }
+          test -n "$EC2_KNOWN_HOSTS" || { echo "EC2_KNOWN_HOSTS secret is required"; exit 1; }
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$EC2_SSH_PRIVATE_KEY" > "$HOME/.ssh/ec2_deploy_key"
+          printf '%s\n' "$EC2_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/ec2_deploy_key" "$HOME/.ssh/known_hosts"
+
+      - name: Deploy and verify service
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          DEPLOY_COMMIT: ${{ github.sha }}
+        run: |
+          ssh \
+            -i "$HOME/.ssh/ec2_deploy_key" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$EC2_USER@$EC2_HOST" \
+            "bash -s -- deployment-setup /home/ubuntu/casting-be $DEPLOY_COMMIT" <<'REMOTE'
+          set -Eeuo pipefail
+          deploy_branch="$1"
+          app_dir="$2"
+          deploy_commit="$3"
+
+          export NVM_DIR="$HOME/.nvm"
+          if [ -s "$NVM_DIR/nvm.sh" ]; then
+            . "$NVM_DIR/nvm.sh"
+          fi
+
+          cd "$app_dir"
+          git fetch origin "$deploy_branch"
+          fetched_commit="$(git rev-parse FETCH_HEAD)"
+          if [ "$fetched_commit" != "$deploy_commit" ]; then
+            echo "Branch advanced after this workflow's CI run; refusing to deploy an untested commit." >&2
+            exit 1
+          fi
+          git checkout --detach "$deploy_commit"
+          npm ci
+          npm run build
+          pm2 restart casting-be --update-env
+
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/api/docs >/dev/null; then
+              echo "Deployment health check passed."
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "Deployment health check failed after restart." >&2
+          pm2 status
+          exit 1
+          REMOTE

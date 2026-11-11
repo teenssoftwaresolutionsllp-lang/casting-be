@@ -34,6 +34,7 @@ export class VideoService {
     userId: string,
     category?: string,
     pagination?: { limit: number; offset: number },
+    excludePhotos = true,
   ) {
     if (
       pagination &&
@@ -50,6 +51,7 @@ export class VideoService {
       userId,
       category,
       pagination,
+      excludePhotos,
     );
 
     return Promise.all(

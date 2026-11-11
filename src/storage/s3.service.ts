@@ -151,12 +151,46 @@ export class S3Service implements OnModuleInit {
    */
   async resolveUrl(value: string | null | undefined): Promise<string | null> {
     if (!value) return null;
-    // Legacy Cloudinary URLs are already fully-qualified
+    // Re-sign old S3 URLs so persisted presigned URLs do not expire permanently.
     if (value.startsWith('http://') || value.startsWith('https://')) {
+      const key = this.getS3KeyFromUrl(value);
+      if (key) return this.getUrl(key);
       return value;
     }
     // It's an S3 key – build a URL
     return this.getUrl(value);
+  }
+
+  private getS3KeyFromUrl(value: string): string | null {
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      return null;
+    }
+
+    const host = url.hostname.toLowerCase();
+    const bucket = this.bucket.toLowerCase();
+    const awsDomain = /(?:^|\.)amazonaws\.com(?:\.cn)?$/;
+    let pathname = url.pathname.replace(/^\/+/, '');
+
+    const virtualHostedUrl =
+      host.startsWith(`${bucket}.s3.`) && awsDomain.test(host);
+    if (!virtualHostedUrl) {
+      const pathHostedUrl =
+        /^s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com(?:\.cn)?$/.test(host);
+      if (!pathHostedUrl || !pathname.startsWith(`${this.bucket}/`)) {
+        return null;
+      }
+      pathname = pathname.slice(this.bucket.length + 1);
+    }
+
+    try {
+      const key = decodeURIComponent(pathname);
+      return key || null;
+    } catch {
+      return null;
+    }
   }
 
   /** Returns true if the value looks like an S3 key (not a URL). */

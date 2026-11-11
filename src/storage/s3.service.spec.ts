@@ -90,6 +90,29 @@ describe('S3Service', () => {
       const resolved = await cfService.resolveUrl('videos/test.mp4');
       expect(resolved).toBe('https://cdn.casting.example.com/videos/test.mp4');
     });
+
+    it('replaces expired S3 presigned URLs with the configured CloudFront URL', async () => {
+      const cfConfig = new ConfigService({
+        AWS_REGION: 'ap-southeast-2',
+        S3_BUCKET: 'casting-app-s3',
+        CLOUDFRONT_DOMAIN: 'cdn.casting.example.com',
+      });
+      const cfService = new S3Service(cfConfig);
+
+      await expect(
+        cfService.resolveUrl(
+          'https://casting-app-s3.s3.ap-southeast-2.amazonaws.com/casting/photos/avatar.jpg?X-Amz-Expires=3600&X-Amz-Signature=expired',
+        ),
+      ).resolves.toBe(
+        'https://cdn.casting.example.com/casting/photos/avatar.jpg',
+      );
+    });
+
+    it('does not rewrite URLs hosted outside the configured S3 bucket', async () => {
+      const externalUrl = 'https://images.example.com/avatar.jpg';
+
+      await expect(service.resolveUrl(externalUrl)).resolves.toBe(externalUrl);
+    });
   });
 
   describe('upload', () => {

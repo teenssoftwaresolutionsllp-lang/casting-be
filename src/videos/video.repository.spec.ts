@@ -1,6 +1,26 @@
 import { VideoRepository } from './video.repository';
+import { PgDialect } from 'drizzle-orm/pg-core';
 
 describe('VideoRepository notifications', () => {
+  it('excludes photo posts from the video feed query when requested', async () => {
+    const queryBuilder = {
+      from: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockResolvedValue([]),
+    };
+    const repository = new VideoRepository({
+      select: jest.fn().mockReturnValue(queryBuilder),
+    } as any);
+
+    await repository.findAllWithUserLike('viewer-id', undefined, undefined, true);
+
+    const condition = queryBuilder.where.mock.calls[0][0];
+    const query = new PgDialect().sqlToQuery(condition);
+    expect(query.sql).toContain('"videos"."category" <>');
+    expect(query.params).toContain('Photos');
+  });
+
   it('commits a new post like, counter update, and notification in one transaction', async () => {
     const likeInsert = {
       values: jest.fn().mockReturnThis(),

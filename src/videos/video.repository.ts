@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, inArray, ne } from 'drizzle-orm';
 import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 
@@ -79,6 +79,7 @@ export class VideoRepository {
     userId: string,
     category?: string,
     pagination?: { limit: number; offset: number },
+    excludePhotos = false,
   ) {
     const query = this.db
       .select({
@@ -107,7 +108,16 @@ export class VideoRepository {
         ),
       );
 
-    if (category && category !== 'All') {
+    if (excludePhotos && category && category !== 'All') {
+      query.where(
+        and(
+          eq(schema.videos.category, category),
+          ne(schema.videos.category, 'Photos'),
+        ),
+      );
+    } else if (excludePhotos) {
+      query.where(ne(schema.videos.category, 'Photos'));
+    } else if (category && category !== 'All') {
       query.where(eq(schema.videos.category, category));
     }
 
