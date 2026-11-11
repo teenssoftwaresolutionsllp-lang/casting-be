@@ -12,8 +12,8 @@ dependencies, build the NestJS app, restart the PM2 process named `casting-be`, 
 
 ## One-time GitHub setup
 
-In the GitHub repository, open **Settings → Secrets and variables → Actions**
-and add these repository or production-environment secrets:
+In the GitHub repository, open **Settings → Environments → `Production – casting-be`**
+and add these environment secrets:
 
 | Secret | Value |
 | --- | --- |

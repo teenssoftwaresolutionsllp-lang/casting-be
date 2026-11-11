@@ -44,7 +44,7 @@ jobs:
     needs: ci
     if: github.ref == 'refs/heads/deployment-setup' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
-    environment: production
+    environment: "Production – casting-be"
     steps:
       - name: Configure SSH
         env:
