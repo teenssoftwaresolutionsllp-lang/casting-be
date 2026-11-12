@@ -156,6 +156,10 @@ export class AuthService {
       );
     }
 
+    if (typeof user.password !== 'string' || !user.password) {
+      throw new UnauthorizedException('Invalid credentials.');
+    }
+
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       throw new UnauthorizedException(
@@ -343,6 +347,10 @@ export class AuthService {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new UnauthorizedException('User account could not be verified.');
+    }
+
+    if (typeof user.password !== 'string' || !user.password) {
+      throw new UnauthorizedException('The current password is incorrect.');
     }
 
     const passwordMatches = await bcrypt.compare(dto.oldPassword, user.password);

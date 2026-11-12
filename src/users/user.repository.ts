@@ -132,6 +132,18 @@ export class UserRepository {
     return results[0] || null;
   }
 
+  async findByOtpPhone(phone: string) {
+    const nationalNumber = phone.slice(-10);
+    const results = await this.db
+      .select()
+      .from(schema.users)
+      .where(
+        sql`${schema.users.phone} = ${phone} OR regexp_replace(${schema.users.mobile}, '[^0-9]', '', 'g') IN (${phone}, ${nationalNumber})`,
+      )
+      .limit(1);
+    return results[0] || null;
+  }
+
   async findByTrkCode(trkCode: string) {
     const results = await this.db
       .select()
