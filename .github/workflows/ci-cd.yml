@@ -97,6 +97,7 @@ jobs:
           git checkout --detach "$deploy_commit"
           npm ci
           npm run build
+          npm run migrate
           pm2 restart casting-be --update-env
 
           for attempt in $(seq 1 12); do

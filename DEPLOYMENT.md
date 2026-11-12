@@ -7,7 +7,8 @@ workflow run also deploys, but only when run on `deployment-setup`.
 
 The deployment uses SSH to update the existing EC2 checkout at
 `/home/ubuntu/casting-be` to the exact commit that passed CI, install locked
-dependencies, build the NestJS app, restart the PM2 process named `casting-be`, and check
+dependencies, build the NestJS app, apply pending Drizzle database migrations,
+restart the PM2 process named `casting-be`, and check
 `http://127.0.0.1:3000/api/docs`.
 
 ## One-time GitHub setup
@@ -47,12 +48,18 @@ The EC2 instance must have:
 - A PM2 application named `casting-be`, started from this project, with its
   runtime `.env` stored on EC2 (never in Git).
 - The app listening on `127.0.0.1:3000` and serving `/api/docs`.
+- The EC2 runtime `.env` must contain the correct `DATABASE_URL`, and the
+  database must be reachable by the deployment process for migrations.
 - Enough memory/swap to complete `npm ci` and `npm run build`.
 
 The workflow runs `npm ci`, which uses `package-lock.json`; commit that lockfile
-with dependency changes. It does not run database migrations or seed scripts.
-Review and run database migrations separately when a release requires them.
-Never run the demo seed script as part of deployment.
+with dependency changes. It runs `npm run migrate` after the app builds and
+before PM2 restarts, so a migration failure stops deployment and leaves the
+currently running app in place. Drizzle applies only migrations not yet recorded
+in its migration history. Review each migration before merging it, keep changes
+backward-compatible with the currently running app, and back up production
+before migrations that may alter or remove data. The workflow never runs seed
+scripts.
 
 ## Deploying
 
@@ -78,6 +85,11 @@ deployments; do not make manual source changes there.
   `origin/deployment-setup`.
 - **Build failure:** inspect the Actions logs. The PM2 restart occurs only
   after dependency installation and build succeed.
+- **Migration failure:** inspect the Actions logs and verify the EC2
+  `DATABASE_URL`, database connectivity, and Drizzle migration history. PM2 is
+  not restarted when migrations fail. Do not mark an already-applied migration
+  as pending or edit production data to bypass a migration error; resolve the
+  database state and migration safely first.
 - **Health-check failure:** SSH to EC2 and inspect `pm2 status`,
   `pm2 logs casting-be --lines 100`, and
   `sudo tail -n 100 /var/log/nginx/error.log`. The workflow reports failure,
