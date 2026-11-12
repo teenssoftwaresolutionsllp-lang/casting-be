@@ -156,6 +156,10 @@ export class AuthService {
       );
     }
 
+    if (typeof user.password !== 'string' || !user.password) {
+      throw new UnauthorizedException('Invalid credentials.');
+    }
+
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
       throw new UnauthorizedException(
@@ -337,7 +341,9 @@ export class AuthService {
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
     if (dto.newPassword !== dto.confirmNewPassword) {
-      throw new BadRequestException('New password and confirmation do not match.');
+      throw new BadRequestException(
+        'New password and confirmation do not match.',
+      );
     }
 
     const user = await this.userRepository.findById(userId);
@@ -345,7 +351,14 @@ export class AuthService {
       throw new UnauthorizedException('User account could not be verified.');
     }
 
-    const passwordMatches = await bcrypt.compare(dto.oldPassword, user.password);
+    if (typeof user.password !== 'string' || !user.password) {
+      throw new UnauthorizedException('The current password is incorrect.');
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      dto.oldPassword,
+      user.password,
+    );
     if (!passwordMatches) {
       throw new UnauthorizedException('The current password is incorrect.');
     }
@@ -359,7 +372,9 @@ export class AuthService {
   async deleteAccount(userId: string) {
     const deleted = await this.userRepository.deleteById(userId);
     if (!deleted) {
-      throw new UnauthorizedException('The authenticated account no longer exists.');
+      throw new UnauthorizedException(
+        'The authenticated account no longer exists.',
+      );
     }
 
     return { message: 'Account and associated data successfully deleted.' };

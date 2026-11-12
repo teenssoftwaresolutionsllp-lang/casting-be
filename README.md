@@ -29,8 +29,15 @@ Create a `.env` file in the root directory using the values from `.env.example`.
 ```env
 PORT=3000
 NODE_ENV=development
-JWT_SECRET=supersecretjwtkeyforcastingapp2026
-DATABASE_URL=postgresql://user:password@host:5432/db_name
+JWT_SECRET=replace_with_a_long_random_secret
+JWT_REFRESH_SECRET=replace_with_a_different_long_random_secret
+MSG91_AUTHKEY=your_msg91_authkey
+MSG91_OTP_TEMPLATE_ID=your_msg91_otp_template_id
+OTP_LENGTH=6
+OTP_EXPIRY_MINUTES=5
+OTP_TEST_PHONES=
+ALLOW_OTP_TEST_PHONES=false
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
 
 AWS_REGION=ap-southeast-2
 S3_BUCKET=casting-app-s3
@@ -58,6 +65,12 @@ FACE_ENCRYPTION_KEY_VERSION=1
 FACE_EMBEDDING_LENGTH=512
 FACE_DISTANCE_THRESHOLD=0.6
 ```
+
+Phone OTP routes are available under `/auth/otp`: `send`, `resend`, `verify`,
+and `signup`; authenticated users can use `link/send` and `link/verify` to add
+a verified phone number. Test phones use `919876543210:123456` pairs in
+`OTP_TEST_PHONES` and are disabled in production unless
+`ALLOW_OTP_TEST_PHONES=true` is explicitly configured.
 
 Notes:
 - `BACKEND_URL` is the public backend origin used for the browser password-reset fallback.

@@ -57,6 +57,13 @@
       "when": 1793345307948,
       "tag": "0007_shocking_maverick",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794382259937,
+      "tag": "0008_add_phone_otp_support",
+      "breakpoints": true
     }
   ]
 }

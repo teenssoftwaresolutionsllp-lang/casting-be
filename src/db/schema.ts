@@ -10,6 +10,7 @@ import {
   index,
   real,
   uniqueIndex,
+  varchar,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
@@ -24,8 +25,10 @@ export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   username: text('username').unique(),
   email: text('email').unique(),
+  phone: varchar('phone', { length: 15 }).unique(),
+  phoneVerifiedAt: timestampWithTimezone('phone_verified_at'),
   mobile: text('mobile').unique(),
-  password: text('password').notNull(),
+  password: text('password'),
   passwordResetTokenHash: text('password_reset_token_hash'),
   passwordResetExpiresAt: timestampWithTimezone('password_reset_expires_at'),
   fullName: text('full_name').notNull(),
