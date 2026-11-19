@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { TREEKO_JWT_ALGORITHM } from './jwt.config';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -20,14 +21,19 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync(token);
-      if (typeof payload.sub !== 'string' || !this.isUuid(payload.sub)) {
-        throw new UnauthorizedException('Invalid authentication token subject.');
+      const payload = await this.jwtService.verifyAsync(token, {
+        algorithms: [TREEKO_JWT_ALGORITHM],
+      });
+      if (
+        typeof payload.sub !== 'string' ||
+        !this.isUuid(payload.sub) ||
+        typeof payload.exp !== 'number' ||
+        payload.exp <= Math.floor(Date.now() / 1000)
+      ) {
+        throw new UnauthorizedException('Invalid authentication token.');
       }
-      // We assign the payload to the request object here
-      // so that we can access it in our route handlers via decorators
       request['user'] = payload;
-    } catch (err) {
+    } catch {
       throw new UnauthorizedException('Invalid or expired authentication token.');
     }
     return true;
@@ -39,6 +45,6 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   private isUuid(value: string): boolean {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
   }
 }
