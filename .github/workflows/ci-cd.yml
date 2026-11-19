@@ -94,6 +94,12 @@ jobs:
             echo "Branch advanced after this workflow's CI run; refusing to deploy an untested commit." >&2
             exit 1
           fi
+          if ! git diff --quiet -- src/notifications/notification.service.ts ||
+            ! git diff --cached --quiet -- src/notifications/notification.service.ts; then
+            git stash push \
+              -m "preserve EC2 notification.service.ts before deploy $deploy_commit" \
+              -- src/notifications/notification.service.ts
+          fi
           git checkout --detach "$deploy_commit"
           npm ci
           npm run build
