@@ -146,7 +146,12 @@ export class VideoService {
             entityType: 'VIDEO',
             entityId: videoId,
           })
-          .catch(() => undefined);
+          .catch((error: unknown) => {
+            console.error(
+              'Video like notification failed:',
+              error instanceof Error ? error.message : String(error),
+            );
+          });
       }
 
       return {

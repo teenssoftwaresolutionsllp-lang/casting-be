@@ -281,19 +281,42 @@ export class NotificationService {
     body: string,
     metadata?: CreateNotificationMeta,
   ) {
-    const user = await this.userRepository.findById(userId);
-    if (!user?.fcmToken) return;
+    this.logger.log(`Push triggered for user: ${userId}`);
 
-    const payload: FcmPayload = {
-      title,
-      body,
-      data: this.buildFcmData(metadata, title, body),
-    };
+    try {
+      const user = await this.userRepository.findById(userId);
 
-    const success = await this.fcmService.sendToToken(user.fcmToken, payload);
-    if (!success) {
-      // Token is invalid — clear it so we don't retry with a dead token
-      await this.userRepository.update(userId, { fcmToken: null });
+      if (!user) {
+        this.logger.warn(`Push skipped: user not found: ${userId}`);
+        return;
+      }
+
+      if (!user.fcmToken) {
+        this.logger.warn(`Push skipped: no FCM token for user: ${userId}`);
+        return;
+      }
+
+      this.logger.log(`FCM token found for user: ${userId}`);
+
+      const payload: FcmPayload = {
+        title,
+        body,
+        data: this.buildFcmData(metadata, title, body),
+      };
+
+      const success = await this.fcmService.sendToToken(user.fcmToken, payload);
+      this.logger.log(`FCM send result for user ${userId}: ${success}`);
+
+      if (!success) {
+        // Token is invalid — clear it so we don't retry with a dead token
+        await this.userRepository.update(userId, { fcmToken: null });
+      }
+    } catch (error: unknown) {
+      this.logger.error(
+        `FCM push failed for user ${userId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
 
