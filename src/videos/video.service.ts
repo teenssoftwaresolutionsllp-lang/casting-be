@@ -31,7 +31,7 @@ export class VideoService {
   }
 
   async findAll(
-    userId: string,
+    userId: string | undefined,
     category?: string,
     pagination?: { limit: number; offset: number },
     excludePhotos = true,
@@ -75,12 +75,14 @@ export class VideoService {
     );
   }
 
-  async findOne(id: string, userId: string) {
+  async findOne(id: string, userId?: string) {
     const v = await this.videoRepository.findById(id);
     if (!v) {
       throw new NotFoundException(`Video with ID ${id} not found.`);
     }
-    const liked = await this.videoRepository.hasLiked(v.id, userId);
+    const liked = userId
+      ? await this.videoRepository.hasLiked(v.id, userId)
+      : false;
     return {
       id: v.id,
       category: v.category,
@@ -171,7 +173,7 @@ export class VideoService {
   }
 
   // Comments business logic
-  async getComments(videoId: string, userId: string) {
+  async getComments(videoId: string, userId?: string) {
     const commentsList = await this.videoRepository.getCommentsWithUserLike(videoId, userId);
 
     return Promise.all(

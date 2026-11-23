@@ -30,6 +30,7 @@ import { IsString, IsNotEmpty } from 'class-validator';
 import type { Express } from 'express';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { StoriesService } from './stories.service';
 
 class StoryReplyDto {
@@ -39,13 +40,13 @@ class StoryReplyDto {
 }
 
 @ApiTags('Stories')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('stories')
 export class StoriesController {
   constructor(private readonly storiesService: StoriesService) {}
 
   @Post()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: createS3Storage('stories'),
@@ -73,17 +74,20 @@ export class StoriesController {
   }
 
   @Get('feed')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get active stories grouped by account, with viewed status' })
   @ApiResponse({ status: 200, description: 'Paginated active story feed.' })
   async getFeed(
-    @CurrentUser() user: any,
+    @CurrentUser() user: { sub: string } | undefined,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
   ) {
-    return this.storiesService.getFeed(user.sub, limit, offset);
+    return this.storiesService.getFeed(user?.sub, limit, offset);
   }
 
   @Post(':id/views')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Mark an active story as viewed' })
   @ApiResponse({ status: 201, description: 'Story marked as viewed.' })
   async markViewed(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) storyId: string) {
@@ -91,6 +95,8 @@ export class StoriesController {
   }
 
   @Post(':id/likes')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Toggle like on an active story' })
   @ApiResponse({ status: 200, description: 'Like toggled. Returns { liked: boolean }.' })
@@ -99,6 +105,8 @@ export class StoriesController {
   }
 
   @Post(':id/replies')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Reply to an active story (notifies the story owner)' })
   @ApiBody({
     schema: {
@@ -117,6 +125,8 @@ export class StoriesController {
   }
 
   @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Delete your own story' })
   @ApiResponse({ status: 200, description: 'Story deleted.' })
   async delete(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) storyId: string) {

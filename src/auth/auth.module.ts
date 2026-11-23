@@ -7,6 +7,7 @@ import { OtpAuthController } from './otp-auth.controller';
 import { OtpAuthService } from './otp-auth.service';
 import { Msg91Service } from './msg91.service';
 import { OtpGuardService } from './otp-guard.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Module({
   imports: [UserModule],
@@ -17,6 +18,7 @@ import { OtpGuardService } from './otp-guard.service';
     OtpAuthService,
     Msg91Service,
     OtpGuardService,
+    JwtAuthGuard,
   ],
   exports: [AuthService, FirebaseService],
 })

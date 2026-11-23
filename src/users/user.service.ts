@@ -76,17 +76,63 @@ export class UserService {
     };
   }
 
-  async getPublicProfile(currentUserId: string, targetUserId: string) {
+  async getPublicProfile(currentUserId: string | undefined, targetUserId: string) {
     const user = await this.findById(targetUserId);
 
     const [followers, following, videosCount, isFollowing] = await Promise.all([
       this.userRepository.getFollowersCount(targetUserId),
       this.userRepository.getFollowingCount(targetUserId),
       this.userRepository.getVideosCount(targetUserId),
-      this.userRepository.isFollowing(currentUserId, targetUserId),
+      currentUserId
+        ? this.userRepository.isFollowing(currentUserId, targetUserId)
+        : Promise.resolve(false),
     ]);
 
     const userMedia = await this.resolveUserMedia(user);
+    const details = {
+      id: user.id,
+      username: user.username,
+      fullName: user.fullName,
+      age: user.age,
+      stageName: user.stageName,
+      gender: user.gender,
+      country: user.country,
+      state: user.state,
+      city: user.city,
+      profilePhoto: userMedia.profilePhoto,
+      role: user.role,
+      category: user.category,
+      experience: user.experience,
+      skills: user.skills,
+      languages: user.languages,
+      preferredLanguage: user.preferredLanguage,
+      qualification: user.qualification,
+      institute: user.institute,
+      occupation: user.occupation,
+      availableFor: user.availableFor,
+      union: user.union,
+      relocate: user.relocate,
+      height: user.height,
+      weight: user.weight,
+      bodyType: user.bodyType,
+      skinTone: user.skinTone,
+      hairColor: user.hairColor,
+      eyeColor: user.eyeColor,
+      preferredRole: user.preferredRole,
+      travelAvailability: user.travelAvailability,
+      nightShoots: user.nightShoots,
+      headshot: userMedia.headshot,
+      fullBody: userMedia.fullBody,
+      introVideo: userMedia.introVideo,
+      previousWork: user.previousWork,
+      instagram: user.instagram,
+      youtube: user.youtube,
+      facebookUrl: user.facebookUrl,
+      imdb: user.imdb,
+      website: user.website,
+      awards: user.awards,
+      bio: user.bio,
+    };
 
     return {
       id: user.id,
@@ -100,11 +146,11 @@ export class UserService {
       videosCount,
       following: isFollowing,
       role: user.role,
-      details: userMedia,
+      details,
     };
   }
 
-  async exploreCreators(currentUserId: string, query?: string, category?: string) {
+  async exploreCreators(currentUserId: string | undefined, query?: string, category?: string) {
     const creators = await this.userRepository.exploreTalent(query, category);
 
     if (!creators.length) {
@@ -115,7 +161,9 @@ export class UserService {
 
     const [followersMap, followingMap, videosMap] = await Promise.all([
       this.userRepository.getFollowersCountByUserIds(creatorIds),
-      this.userRepository.getFollowStatusMap(currentUserId, creatorIds),
+      currentUserId
+        ? this.userRepository.getFollowStatusMap(currentUserId, creatorIds)
+        : Promise.resolve({}),
       this.userRepository.getVideosCountByUserIds(creatorIds),
     ]);
 

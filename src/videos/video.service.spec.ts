@@ -70,6 +70,20 @@ describe('VideoService', () => {
     );
   });
 
+  it('returns public video details without looking up an anonymous like state', async () => {
+    repository.findById.mockResolvedValue({
+      id: 'post-id',
+      creatorId: 'owner-id',
+      likesCount: 2,
+      viewsCount: 5,
+    });
+
+    const result = await service.findOne('post-id');
+
+    expect(result.liked).toBe(false);
+    expect(repository.hasLiked).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid video feed pagination values', async () => {
     await expect(
       service.findAll('viewer-id', undefined, { limit: 0, offset: 0 }),

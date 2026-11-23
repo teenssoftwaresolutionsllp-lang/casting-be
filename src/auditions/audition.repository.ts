@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 
@@ -84,7 +84,7 @@ export class AuditionRepository {
     return query.orderBy(desc(schema.auditions.createdAt));
   }
 
-  async findAllWithUserApplication(userId: string, category?: string) {
+  async findAllWithUserApplication(userId: string | undefined, category?: string) {
     const query = this.db
       .select({
         id: schema.auditions.id,
@@ -112,7 +112,7 @@ export class AuditionRepository {
         schema.applications,
         and(
           eq(schema.applications.auditionId, schema.auditions.id),
-          eq(schema.applications.applicantId, userId),
+          userId ? eq(schema.applications.applicantId, userId) : sql`false`,
         ),
       );
 

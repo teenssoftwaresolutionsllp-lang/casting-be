@@ -28,7 +28,7 @@ export class StoriesService {
     };
   }
 
-  async getFeed(viewerId: string, requestedLimit = 20, requestedOffset = 0) {
+  async getFeed(viewerId: string | undefined, requestedLimit = 20, requestedOffset = 0) {
     const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 50) : 20;
     const offset = Number.isFinite(requestedOffset) ? Math.max(Math.trunc(requestedOffset), 0) : 0;
     const result = await this.storiesRepository.getFeed(viewerId, limit, offset);

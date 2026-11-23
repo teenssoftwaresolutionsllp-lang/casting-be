@@ -25,6 +25,7 @@ import { VideoService } from '../videos/video.service.js';
 import { createS3Storage } from '../storage/s3.service.js';
 import type { Express } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 
 const MAX_IMAGE_MB = Number(process.env.MAX_IMAGE_MB || 50);
@@ -70,8 +71,6 @@ export class MediaController {
 
 // ─── /photos controller ──────────────────────────────────────────────────────
 @ApiTags('Photos')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('photos')
 export class PhotosController {
   constructor(
@@ -80,6 +79,8 @@ export class PhotosController {
   ) {}
 
   @Post()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: createS3Storage('photos'),
@@ -121,13 +122,16 @@ export class PhotosController {
   }
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get all photos' })
-  async getPhotos(@CurrentUser() user: any) {
+  async getPhotos(@CurrentUser() user: { sub: string } | undefined) {
     // Photos are stored in the videos table with category = 'Photos'
-    return this.videoService.findAll(user.sub, 'Photos', undefined, false);
+    return this.videoService.findAll(user?.sub, 'Photos', undefined, false);
   }
 
   @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Delete your own photo post' })
   @ApiResponse({ status: 200, description: 'Photo post deleted.' })
   async deletePhoto(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) id: string) {

@@ -21,6 +21,7 @@ import {
 import { AuditionService } from './audition.service';
 import { CreateAuditionDto } from './dto/create-audition.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { CINEMA_CRAFTS } from '../common/cinema-crafts';
 import { UpdateAuditionStatusDto } from './dto/update-audition-status.dto';
@@ -31,13 +32,13 @@ interface AuthenticatedUser {
 }
 
 @ApiTags('Auditions')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('auditions')
 export class AuditionController {
   constructor(private readonly auditionService: AuditionService) {}
 
   @Post()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Post a new casting call / audition opportunity' })
   @ApiResponse({ status: 201, description: 'Audition posted successfully.' })
   async create(
@@ -48,6 +49,7 @@ export class AuditionController {
   }
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Retrieve active audition casting calls list' })
   @ApiQuery({
     name: 'category',
@@ -58,13 +60,15 @@ export class AuditionController {
   })
   @ApiResponse({ status: 200, description: 'Returns list of auditions.' })
   async findAll(
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser | undefined,
     @Query('category') category?: string,
   ) {
-    return this.auditionService.findAll(user.sub, category);
+    return this.auditionService.findAll(user?.sub, category);
   }
 
   @Get('my-posted')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Retrieve auditions created/posted by the current user',
   })
@@ -77,6 +81,7 @@ export class AuditionController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
     summary: 'Retrieve detailed information for a single audition opportunity',
   })
@@ -86,13 +91,15 @@ export class AuditionController {
       'Audition details. Includes applicant lists if called by publisher.',
   })
   async findOne(
-    @CurrentUser() user: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser | undefined,
     @Param('id') id: string,
   ) {
-    return this.auditionService.findOne(id, user.sub);
+    return this.auditionService.findOne(id, user?.sub);
   }
 
   @Patch(':id/status')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Open or close an audition (creator or admin only)',
   })
@@ -115,6 +122,8 @@ export class AuditionController {
   }
 
   @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete an audition created by the current user or an admin',

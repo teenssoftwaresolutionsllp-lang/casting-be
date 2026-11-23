@@ -17,16 +17,17 @@ import { VideoService } from './video.service';
 import { CreateVideoDto } from './dto/create-video.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
 @ApiTags('Videos')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('videos')
 export class VideoController {
   constructor(private readonly videoService: VideoService) {}
 
   @Post()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Post a new video reel / audition video' })
   @ApiResponse({ status: 201, description: 'Video posted successfully.' })
   async create(@CurrentUser() user: any, @Body() dto: CreateVideoDto) {
@@ -34,18 +35,19 @@ export class VideoController {
   }
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Retrieve video feeds' })
   @ApiQuery({ name: 'category', required: false, description: 'Filter videos by category' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of videos to return (default 4, maximum 100)' })
   @ApiQuery({ name: 'offset', required: false, type: Number, description: 'Number of videos to skip (default 0)' })
   @ApiResponse({ status: 200, description: 'Returns video list annotated with liked state.' })
   async findAll(
-    @CurrentUser() user: any,
+    @CurrentUser() user: { sub: string } | undefined,
     @Query('category') category?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    return this.videoService.findAll(user.sub, category, {
+    return this.videoService.findAll(user?.sub, category, {
       limit: limit === undefined ? 4 : this.parsePaginationValue('limit', limit),
       offset: offset === undefined ? 0 : this.parsePaginationValue('offset', offset),
     });
@@ -60,13 +62,19 @@ export class VideoController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Retrieve detailed statistics for a single video' })
   @ApiResponse({ status: 200, description: 'Video details retrieved.' })
-  async findOne(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.videoService.findOne(id, user.sub);
+  async findOne(
+    @CurrentUser() user: { sub: string } | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.videoService.findOne(id, user?.sub);
   }
 
   @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Delete your own video or photo post' })
   @ApiResponse({ status: 200, description: 'Post deleted.' })
   async delete(@CurrentUser() user: any, @Param('id', ParseUUIDPipe) id: string) {
@@ -74,6 +82,8 @@ export class VideoController {
   }
 
   @Post(':id/like')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Like or unlike a video' })
   @ApiResponse({ status: 200, description: 'Returns video liked state.' })
@@ -82,6 +92,7 @@ export class VideoController {
   }
 
   @Post(':id/view')
+  @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Increment video view counter' })
   @ApiResponse({ status: 200, description: 'Views incremented.' })
@@ -90,13 +101,19 @@ export class VideoController {
   }
 
   @Get(':id/comments')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get comments thread list for a video' })
   @ApiResponse({ status: 200, description: 'Returns list of comments.' })
-  async getComments(@CurrentUser() user: any, @Param('id') id: string) {
-    return this.videoService.getComments(id, user.sub);
+  async getComments(
+    @CurrentUser() user: { sub: string } | undefined,
+    @Param('id') id: string,
+  ) {
+    return this.videoService.getComments(id, user?.sub);
   }
 
   @Post(':id/comments')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Post a comment on a video' })
   @ApiResponse({ status: 201, description: 'Comment created.' })
   async postComment(
@@ -108,6 +125,8 @@ export class VideoController {
   }
 
   @Post('comments/:commentId/like')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Like or unlike a comment' })
   @ApiResponse({ status: 200, description: 'Toggled comment like state.' })

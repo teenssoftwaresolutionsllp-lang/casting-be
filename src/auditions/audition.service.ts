@@ -37,7 +37,7 @@ export class AuditionService {
     });
   }
 
-  async findAll(userId: string, category?: string) {
+  async findAll(userId: string | undefined, category?: string) {
     const list = await this.auditionRepository.findAllWithUserApplication(
       userId,
       category,
@@ -83,17 +83,16 @@ export class AuditionService {
     }));
   }
 
-  async findOne(id: string, userId: string) {
+  async findOne(id: string, userId?: string) {
     const audition = await this.auditionRepository.findById(id);
     if (!audition) {
       throw new NotFoundException(`Audition with ID ${id} not found.`);
     }
 
     const createdByMe = audition.creatorId === userId;
-    const app = await this.applicationRepository.findByAuditionAndApplicant(
-      id,
-      userId,
-    );
+    const app = userId
+      ? await this.applicationRepository.findByAuditionAndApplicant(id, userId)
+      : null;
 
     let applicants: any[] = [];
     if (createdByMe) {

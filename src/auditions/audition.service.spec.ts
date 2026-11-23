@@ -46,3 +46,69 @@ describe('AuditionService status', () => {
     expect(auditionRepository.updateStatus).not.toHaveBeenCalled();
   });
 });
+
+describe('AuditionService public reads', () => {
+  it('returns the public audition listing without application state for anonymous visitors', async () => {
+    const auditionRepository = {
+      findAllWithUserApplication: jest.fn().mockResolvedValue([
+        {
+          id: 'audition-id',
+          creatorId: 'creator-id',
+          title: 'Casting call',
+          applicationId: null,
+          applicationStatus: null,
+        },
+      ]),
+    };
+    const applicationRepository = {
+      findByAuditionAndApplicant: jest.fn(),
+    };
+    const service = new AuditionService(
+      auditionRepository as any,
+      applicationRepository as any,
+      { createNotification: jest.fn() } as any,
+    );
+
+    const result = await service.findAll(undefined);
+
+    expect(result[0]).toMatchObject({
+      id: 'audition-id',
+      createdByMe: false,
+      applied: false,
+      applicationStatus: null,
+    });
+    expect(auditionRepository.findAllWithUserApplication).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+    );
+  });
+
+  it('does not load application or applicant details for an anonymous audition detail read', async () => {
+    const auditionRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'audition-id',
+        creatorId: 'creator-id',
+      }),
+      getApplicantsForAudition: jest.fn(),
+    };
+    const applicationRepository = {
+      findByAuditionAndApplicant: jest.fn(),
+    };
+    const service = new AuditionService(
+      auditionRepository as any,
+      applicationRepository as any,
+      { createNotification: jest.fn() } as any,
+    );
+
+    const result = await service.findOne('audition-id');
+
+    expect(result).toMatchObject({
+      createdByMe: false,
+      applied: false,
+      applicationStatus: null,
+      applicants: [],
+    });
+    expect(applicationRepository.findByAuditionAndApplicant).not.toHaveBeenCalled();
+    expect(auditionRepository.getApplicantsForAudition).not.toHaveBeenCalled();
+  });
+});

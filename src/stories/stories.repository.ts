@@ -16,7 +16,7 @@ export class StoriesRepository {
     return created;
   }
 
-  async getFeed(viewerId: string, limit: number, offset: number) {
+  async getFeed(viewerId: string | undefined, limit: number, offset: number) {
     const now = new Date();
     const creators = await this.db
       .select({ creatorId: schema.stories.creatorId })
@@ -52,7 +52,7 @@ export class StoriesRepository {
         schema.storyViews,
         and(
           eq(schema.storyViews.storyId, schema.stories.id),
-          eq(schema.storyViews.viewerId, viewerId),
+          viewerId ? eq(schema.storyViews.viewerId, viewerId) : sql`false`,
         ),
       )
       .where(and(gt(schema.stories.expiresAt, now), inArray(schema.stories.creatorId, creatorIds)))

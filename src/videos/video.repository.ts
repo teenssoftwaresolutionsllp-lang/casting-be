@@ -76,7 +76,7 @@ export class VideoRepository {
   }
 
   async findAllWithUserLike(
-    userId: string,
+    userId: string | undefined,
     category?: string,
     pagination?: { limit: number; offset: number },
     excludePhotos = false,
@@ -104,7 +104,7 @@ export class VideoRepository {
         schema.videoLikes,
         and(
           eq(schema.videos.id, schema.videoLikes.videoId),
-          eq(schema.videoLikes.userId, userId),
+          userId ? eq(schema.videoLikes.userId, userId) : sql`false`,
         ),
       );
 
@@ -230,7 +230,7 @@ export class VideoRepository {
       .orderBy(desc(schema.comments.createdAt));
   }
 
-  async getCommentsWithUserLike(videoId: string, userId: string) {
+  async getCommentsWithUserLike(videoId: string, userId?: string) {
     return this.db
       .select({
         id: schema.comments.id,
@@ -249,7 +249,7 @@ export class VideoRepository {
         schema.commentLikes,
         and(
           eq(schema.comments.id, schema.commentLikes.commentId),
-          eq(schema.commentLikes.userId, userId),
+          userId ? eq(schema.commentLikes.userId, userId) : sql`false`,
         ),
       )
       .where(eq(schema.comments.videoId, videoId))
