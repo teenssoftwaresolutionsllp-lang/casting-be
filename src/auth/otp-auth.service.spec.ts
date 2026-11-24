@@ -164,6 +164,10 @@ describe('OtpAuthService', () => {
       refresh_token: 'refresh-token',
       user: { id: 'existing-user-id', phone: '919876543210' },
     });
+    expect(jwt.signAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: 'existing-user-id' }),
+      { expiresIn: '30d' },
+    );
     expect(users.update).toHaveBeenCalledWith(
       'existing-user-id',
       expect.objectContaining({

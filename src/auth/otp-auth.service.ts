@@ -324,7 +324,7 @@ export class OtpAuthService {
       role: user.role,
     };
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, { expiresIn: '15m' }),
+      this.jwtService.signAsync(payload, { expiresIn: '30d' }),
       this.jwtService.signAsync(
         { ...payload, type: 'refresh' },
         { secret: refreshSecret, expiresIn: '30d' },
