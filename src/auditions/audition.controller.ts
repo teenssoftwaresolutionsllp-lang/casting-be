@@ -74,7 +74,8 @@ export class AuditionController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Returns posted auditions list with applicants count.',
+    description:
+      'Returns posted auditions list with applicationCount and applicant details.',
   })
   async findMyPosted(@CurrentUser() user: AuthenticatedUser) {
     return this.auditionService.findMyPosted(user.sub);
@@ -88,7 +89,7 @@ export class AuditionController {
   @ApiResponse({
     status: 200,
     description:
-      'Audition details. Includes applicant lists if called by publisher.',
+      'Audition details including applicationCount. Includes applicant lists if called by publisher.',
   })
   async findOne(
     @CurrentUser() user: AuthenticatedUser | undefined,

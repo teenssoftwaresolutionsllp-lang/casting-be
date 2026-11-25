@@ -48,6 +48,33 @@ describe('AuditionService status', () => {
 });
 
 describe('AuditionService public reads', () => {
+  it('includes application counts in the creator posted audition list', async () => {
+    const auditionRepository = {
+      findMyPosted: jest.fn().mockResolvedValue([
+        {
+          id: 'audition-id',
+          applicationCount: 4,
+        },
+      ]),
+      getApplicantsForAuditionIds: jest.fn().mockResolvedValue({
+        'audition-id': [{ id: 'application-id' }],
+      }),
+    };
+    const service = new AuditionService(
+      auditionRepository as any,
+      {} as any,
+      {} as any,
+    );
+
+    await expect(service.findMyPosted('creator-id')).resolves.toMatchObject([
+      {
+        id: 'audition-id',
+        applicationCount: 4,
+        applicants: [{ id: 'application-id' }],
+      },
+    ]);
+  });
+
   it('returns the public audition listing without application state for anonymous visitors', async () => {
     const auditionRepository = {
       findAllWithUserApplication: jest.fn().mockResolvedValue([
@@ -55,6 +82,7 @@ describe('AuditionService public reads', () => {
           id: 'audition-id',
           creatorId: 'creator-id',
           title: 'Casting call',
+          applicationCount: 3,
           applicationId: null,
           applicationStatus: null,
         },
@@ -75,6 +103,7 @@ describe('AuditionService public reads', () => {
       id: 'audition-id',
       createdByMe: false,
       applied: false,
+      applicationCount: 3,
       applicationStatus: null,
     });
     expect(auditionRepository.findAllWithUserApplication).toHaveBeenCalledWith(
@@ -88,6 +117,7 @@ describe('AuditionService public reads', () => {
       findById: jest.fn().mockResolvedValue({
         id: 'audition-id',
         creatorId: 'creator-id',
+        applicationCount: 2,
       }),
       getApplicantsForAudition: jest.fn(),
     };
@@ -105,6 +135,7 @@ describe('AuditionService public reads', () => {
     expect(result).toMatchObject({
       createdByMe: false,
       applied: false,
+      applicationCount: 2,
       applicationStatus: null,
       applicants: [],
     });

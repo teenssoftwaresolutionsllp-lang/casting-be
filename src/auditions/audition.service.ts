@@ -21,7 +21,7 @@ export class AuditionService {
   ) {}
 
   async createAudition(creatorId: string, dto: CreateAuditionDto) {
-    return this.auditionRepository.create({
+    const audition = await this.auditionRepository.create({
       creatorId,
       title: dto.title,
       category: dto.category,
@@ -35,6 +35,7 @@ export class AuditionService {
       lang: dto.lang,
       desc: dto.desc,
     });
+    return { ...audition, applicationCount: 0 };
   }
 
   async findAll(userId: string | undefined, category?: string) {
@@ -60,6 +61,7 @@ export class AuditionService {
       status: a.status,
       createdAt: a.createdAt,
       contactName: a.contactName,
+      applicationCount: a.applicationCount,
       createdByMe: a.creatorId === userId,
       applied: !!a.applicationId,
       applicationStatus: a.applicationStatus || null,
@@ -105,6 +107,7 @@ export class AuditionService {
       applied: !!app,
       applicationStatus: app ? app.status : null,
       applicationDetails: app ? app.details : null,
+      applicationCount: audition.applicationCount,
       applicants, // empty array if not creator
     };
   }

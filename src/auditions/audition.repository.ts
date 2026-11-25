@@ -4,6 +4,12 @@ import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { DRIZZLE_DB } from '../db/db.module';
 import * as schema from '../db/schema';
 
+const applicationCount = sql<number>`(
+  select count(*)::int
+  from ${schema.applications}
+  where ${schema.applications.auditionId} = ${schema.auditions.id}
+)`;
+
 @Injectable()
 export class AuditionRepository {
   constructor(
@@ -46,6 +52,7 @@ export class AuditionRepository {
         status: schema.auditions.status,
         createdAt: schema.auditions.createdAt,
         contactName: schema.users.fullName,
+        applicationCount,
       })
       .from(schema.auditions)
       .leftJoin(schema.users, eq(schema.auditions.creatorId, schema.users.id))
@@ -73,6 +80,7 @@ export class AuditionRepository {
         status: schema.auditions.status,
         createdAt: schema.auditions.createdAt,
         contactName: schema.users.fullName,
+        applicationCount,
       })
       .from(schema.auditions)
       .leftJoin(schema.users, eq(schema.auditions.creatorId, schema.users.id));
@@ -105,6 +113,7 @@ export class AuditionRepository {
         contactName: schema.users.fullName,
         applicationId: schema.applications.id,
         applicationStatus: schema.applications.status,
+        applicationCount,
       })
       .from(schema.auditions)
       .leftJoin(schema.users, eq(schema.auditions.creatorId, schema.users.id))
@@ -142,6 +151,7 @@ export class AuditionRepository {
         status: schema.auditions.status,
         createdAt: schema.auditions.createdAt,
         contactName: schema.users.fullName,
+        applicationCount,
       })
       .from(schema.auditions)
       .leftJoin(schema.users, eq(schema.auditions.creatorId, schema.users.id))
