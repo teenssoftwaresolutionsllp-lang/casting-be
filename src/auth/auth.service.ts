@@ -25,11 +25,14 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.userRepository.findByEmail(dto.email);
-    if (existing) {
-      throw new BadRequestException(
-        'A user with this email address already exists.',
-      );
+    const email = dto.email?.trim() || null;
+    if (email) {
+      const existing = await this.userRepository.findByEmail(email);
+      if (existing) {
+        throw new BadRequestException(
+          'A user with this email address already exists.',
+        );
+      }
     }
 
     const existingUsername = await this.userRepository.findByUsername(
@@ -58,7 +61,7 @@ export class AuthService {
     // Construct user DB record
     const user = await this.userRepository.create({
       username: dto.username,
-      email: dto.email,
+      email,
       password: hashedPassword,
       fullName: dto.fullName || dto.username,
       role: dto.role,
