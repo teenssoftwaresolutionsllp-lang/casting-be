@@ -11,12 +11,15 @@ import { AuditionModule } from './auditions/audition.module';
 import { ApplicationModule } from './applications/application.module';
 import { ChatModule } from './chat/chat.module';
 import { NotificationModule } from './notifications/notification.module';
+import { createTreeKoJwtOptions } from './auth/jwt.config';
 
 @Module({
   imports: [
     // Global environment config
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: process.env.NODE_ENV === 'staging' ? '.env.staging' : '.env',
+      ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     // Global JWT registration
     JwtModule.registerAsync({
@@ -24,8 +27,7 @@ import { NotificationModule } from './notifications/notification.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'supersecretjwtkeyforcastingapp2026',
-        signOptions: { expiresIn: '7d' },
+        ...createTreeKoJwtOptions(configService.get<string>('JWT_SECRET')),
       }),
     }),
     
