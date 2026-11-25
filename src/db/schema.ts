@@ -1,3 +1,6 @@
+/**
+ * Source-of-truth database schema definition for Treeko Casting Platform (Drizzle ORM).
+ */
 import { pgTable, uuid, text, integer, boolean, timestamp, primaryKey, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
